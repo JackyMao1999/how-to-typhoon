@@ -13,8 +13,9 @@ function clamp(value: number, min: number, max: number): number {
 
 /** MPI 最大潜势强度（简化 Emanuel 公式） */
 function computeMPI(sst: number, shear: number, lat: number, ohc: number): number {
+  const safeShear = Math.min(shear, 35);
   const base = 18 + (sst - 22) * 3.2;
-  const shearPenalty = Math.max(0, shear - 6) * 0.9;
+  const shearPenalty = Math.max(0, safeShear - 6) * 0.9;
   const latPenalty = Math.max(0, Math.abs(lat) - 10) * 0.25;
   const ohcBonus = (ohc - 0.3) * 12;
   return clamp(base + ohcBonus - shearPenalty - latPenalty, 15, 85);

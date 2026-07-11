@@ -20,8 +20,8 @@ export async function fetchWeatherAt(
     const sst = marineJson?.current?.sea_surface_temperature;
     if (sst === undefined) throw new Error('No SST data');
 
-    // 高空天气 API（风切变、湿度、气压）
-    const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${roundedLat}&longitude=${roundedLng}&current=temperature_2m,relative_humidity_2m,surface_pressure&hourly=temperature_200hPa,wind_speed_200hPa,wind_speed_850hPa`;
+    // 高空天气 API（风切变、湿度、气压）— 使用 m/s 单位
+    const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${roundedLat}&longitude=${roundedLng}&current=temperature_2m,relative_humidity_2m,surface_pressure&hourly=temperature_200hPa,wind_speed_200hPa,wind_speed_850hPa&wind_speed_unit=ms`;
     const forecastRes = await fetch(forecastUrl);
     if (!forecastRes.ok) throw new Error(`Forecast API returned ${forecastRes.status}`);
     const forecastJson = await forecastRes.json();
@@ -39,7 +39,7 @@ export async function fetchWeatherAt(
     if (hourly?.wind_speed_200hPa?.length > 0) {
       shear200 = hourly.wind_speed_200hPa[0] ?? 10;
     }
-    const windShear = Math.round(Math.abs(shear200 - shear850) * 10) / 10;
+    const windShear = Math.round(Math.min(40, Math.abs(shear200 - shear850)) * 10) / 10;
 
     const humidity = Math.round(clamp(current.relative_humidity_2m ?? 65, 20, 100));
     const surfacePressure = Math.round(current.surface_pressure ?? 1013);
