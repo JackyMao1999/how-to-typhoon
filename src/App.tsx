@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { GaodeProvider } from './map/GaodeProvider';
+import { MapProvider, useMap } from './map/MapProvider';
 import { RendererOverlay } from './renderer/RendererOverlay';
 import { Dashboard } from './components/Dashboard';
 import { Timeline } from './components/Timeline';
@@ -7,7 +7,6 @@ import { ControlPanel } from './components/ControlPanel';
 import { WindDetail } from './components/WindDetail';
 import { HistoryPanel } from './components/HistoryPanel';
 import { StatusBar } from './components/StatusBar';
-import { MapTokenDialog } from './components/MapTokenDialog';
 import { useTyphoonStore, useDisplayState } from './store/typhoonStore';
 import { useUIStore } from './store/uiStore';
 import { useTyphoonSimulation } from './hooks/useTyphoonSimulation';
@@ -17,11 +16,8 @@ import { AlertToastContainer } from './components/AlertToast';
 import { updateWindCircleLayers, setWindCirclesVisible } from './map/layers/windCircleLayer';
 import { updatePathLayer, updatePredictionLayer, setPathVisible, setPredictionVisible } from './map/layers/pathLayer';
 import { updateRegionLayers } from './map/layers/regionLayer';
-import { updateCoastlineLayer, setCoastlineVisible, removeCoastlineLayer } from './map/layers/coastlineLayer';
-import { useMap } from './map/GaodeProvider';
-import { getAmapKey } from './utils/token';
+import { updateCoastlineLayer, setCoastlineVisible } from './map/layers/coastlineLayer';
 import { predictPath } from './engine';
-import { wgs84ToGcj02Batch } from './utils/coord';
 import { getLevelHexColor, getTyphoonLevel } from './engine';
 import { haversineDistance } from './utils/geo';
 
@@ -29,7 +25,7 @@ import { haversineDistance } from './utils/geo';
 function PathTooltip({ info }: { info: { x: number; y: number; text: string; color: string; time: string } | null }) {
   if (!info) return null;
   return (
-    <div className="fixed z-50 pointer-events-none font-mono" style={{ left: info.x + 12, top: info.y - 12 }}>
+    <div className="fixed z-[810] pointer-events-none font-mono" style={{ left: info.x + 12, top: info.y - 12 }}>
       <div className="bg-dark-bg/85 backdrop-blur border border-gray-600/60 rounded px-2 py-1 text-[10px]">
         <div className="text-gray-400">{info.time}</div>
         <div style={{ color: info.color }} className="font-bold">{info.text}</div>
@@ -60,12 +56,12 @@ function MapLayers() {
   useEffect(() => {
     if (!map || !isLoaded || fullHistory.length < 2) return;
     const coords = fullHistory.map((p) => [p.centerLng, p.centerLat] as [number, number]);
-    updatePathLayer(map, wgs84ToGcj02Batch(coords));
+    updatePathLayer(map, coords);
   }, [map, isLoaded, fullHistory]);
 
   useEffect(() => {
     if (!map || !isLoaded || predCoords.length < 2) return;
-    updatePredictionLayer(map, wgs84ToGcj02Batch(predCoords.slice(0, 13)));
+    updatePredictionLayer(map, predCoords.slice(0, 13));
   }, [map, isLoaded, predCoords, displayState]);
 
   useEffect(() => { setWindCirclesVisible(showWindCircles); }, [showWindCircles]);
@@ -167,22 +163,11 @@ function MapApp() {
 }
 
 export default function App() {
-  const [hasKey, setHasKey] = useState(() => !!getAmapKey());
-
-  if (!hasKey) {
-    return (
-      <MapTokenDialog onTokenSaved={() => {
-        setHasKey(true);
-        window.location.reload();
-      }} />
-    );
-  }
-
   return (
     <div className="w-full h-full relative overflow-hidden bg-dark-bg">
-      <GaodeProvider>
+      <MapProvider>
         <MapApp />
-      </GaodeProvider>
+      </MapProvider>
     </div>
   );
 }

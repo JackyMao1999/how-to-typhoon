@@ -85,7 +85,7 @@ export function AlertToastContainer({ alerts, onDismiss }: { alerts: AlertMessag
   if (alerts.length === 0) return null;
   const latest = alerts[alerts.length - 1];
   return (
-    <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 space-y-2" style={{ pointerEvents: 'auto' }}>
+    <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[809] space-y-2" style={{ pointerEvents: 'auto' }}>
       <div key={latest.id}>
         <AlertToast alert={latest} onDismiss={() => onDismiss(latest.id)} />
       </div>

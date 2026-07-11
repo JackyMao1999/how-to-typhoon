@@ -1,6 +1,6 @@
 import { TyphoonStatus } from '../types/typhoon';
 import { computeWindAtPoint } from '../engine/windField';
-import { gcj02ToWgs84, wgs84ToGcj02 } from '../utils/coord';
+import L from 'leaflet';
 
 const VERT_SRC = `attribute vec2 aPosition;
 attribute vec3 aColor;
@@ -140,10 +140,7 @@ export class WindField {
         const nr = Math.random() * 0.6;
         const nx = Math.cos(na) * nr;
         const ny = Math.sin(na) * nr;
-        const pixel = map.lngLatToContainer([
-          centerLng + nx * 20,
-          centerLat + ny * 15,
-        ]);
+        const pixel = map.latLngToContainerPoint(L.latLng(centerLat + ny * 15, centerLng + nx * 20));
         p.x = (pixel.x - w / 2) / (w / 2);
         p.y = -(pixel.y - h / 2) / (h / 2);
         p.lng = centerLng + nx * 20;
@@ -162,7 +159,7 @@ export class WindField {
         p.lat += mLat;
       }
 
-      const pixel2 = map.lngLatToContainer([p.lng, p.lat]);
+      const pixel2 = map.latLngToContainerPoint(L.latLng(p.lat, p.lng));
       p.x = (pixel2.x - w / 2) / (w / 2);
       p.y = -(pixel2.y - h / 2) / (h / 2);
 

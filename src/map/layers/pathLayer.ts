@@ -1,76 +1,73 @@
+import L from 'leaflet';
 import { TyphoonStatus } from '../../types/typhoon';
 import { getLevelHexColor, getTyphoonLevel } from '../../engine';
-import { wgs84ToGcj02Batch } from '../../utils/coord';
 
 let polyline: any = null;
 let glowPolyline: any = null;
 let predPolyline: any = null;
+let currentMap: any = null;
 
-export function updatePathLayer(map: any, gcjCoords: [number, number][]): void {
-  if (gcjCoords.length < 2) return;
+export function updatePathLayer(map: any, coords: [number, number][]): void {
+  currentMap = map;
+  if (coords.length < 2) return;
+
+  const latlngs = coords.map(([lng, lat]) => [lat, lng] as [number, number]);
 
   if (polyline) {
-    polyline.setPath(gcjCoords);
-    glowPolyline?.setPath(gcjCoords);
+    polyline.setLatLngs(latlngs);
+    glowPolyline?.setLatLngs(latlngs);
     return;
   }
 
-  polyline = new window.AMap.Polyline({
-    path: gcjCoords,
-    strokeColor: '#4FC3F7',
-    strokeWeight: 2.5,
-    strokeOpacity: 0.7,
-    borderWeight: 0,
-    lineJoin: 'round',
-  });
+  polyline = L.polyline(latlngs, {
+    color: '#4FC3F7',
+    weight: 2.5,
+    opacity: 0.7,
+    interactive: false,
+  }).addTo(map);
 
-  glowPolyline = new window.AMap.Polyline({
-    path: gcjCoords,
-    strokeColor: '#4FC3F7',
-    strokeWeight: 6,
-    strokeOpacity: 0.15,
-    borderWeight: 0,
-    lineJoin: 'round',
-  });
-
-  map.add([glowPolyline, polyline]);
+  glowPolyline = L.polyline(latlngs, {
+    color: '#4FC3F7',
+    weight: 6,
+    opacity: 0.15,
+    interactive: false,
+  }).addTo(map);
 }
 
-export function updatePredictionLayer(map: any, gcjCoords: [number, number][]): void {
-  if (gcjCoords.length < 2) return;
+export function updatePredictionLayer(map: any, coords: [number, number][]): void {
+  currentMap = map;
+  if (coords.length < 2) return;
+
+  const latlngs = coords.map(([lng, lat]) => [lat, lng] as [number, number]);
 
   if (predPolyline) {
-    predPolyline.setPath(gcjCoords);
+    predPolyline.setLatLngs(latlngs);
     return;
   }
 
-  predPolyline = new window.AMap.Polyline({
-    path: gcjCoords,
-    strokeColor: '#FF8844',
-    strokeWeight: 2,
-    strokeOpacity: 0.8,
-    strokeStyle: 'dashed',
-    borderWeight: 0,
-    lineJoin: 'round',
-  });
-
-  map.add(predPolyline);
+  predPolyline = L.polyline(latlngs, {
+    color: '#FF8844',
+    weight: 2,
+    opacity: 0.8,
+    dashArray: '8 6',
+    interactive: false,
+  }).addTo(map);
 }
 
 export function removePathLayer(map: any): void {
-  if (polyline) { map.remove(polyline); polyline = null; }
-  if (glowPolyline) { map.remove(glowPolyline); glowPolyline = null; }
+  if (polyline) { map.removeLayer(polyline); polyline = null; }
+  if (glowPolyline) { map.removeLayer(glowPolyline); glowPolyline = null; }
 }
 
 export function removePredictionLayer(map: any): void {
-  if (predPolyline) { map.remove(predPolyline); predPolyline = null; }
+  if (predPolyline) { map.removeLayer(predPolyline); predPolyline = null; }
 }
 
 export function getPathTooltip(
   fullHistory: TyphoonStatus[],
-  gcjIdx: number,
+  idx: number,
 ): { time: string; text: string; color: string } | null {
-  const entry = fullHistory[gcjIdx];
+  const entry = fullHistory[idx];
   if (!entry) return null;
   const level = getTyphoonLevel(entry.maxWindSpeed);
   const color = getLevelHexColor(entry.maxWindSpeed);
@@ -91,11 +88,12 @@ export function getPathTooltip(
 }
 
 export function setPathVisible(visible: boolean): void {
-  if (visible) { polyline?.show(); glowPolyline?.show(); }
-  else { polyline?.hide(); glowPolyline?.hide(); }
+  if (!currentMap) return;
+  if (polyline) { visible ? polyline.addTo(currentMap) : currentMap.removeLayer(polyline); }
+  if (glowPolyline) { visible ? glowPolyline.addTo(currentMap) : currentMap.removeLayer(glowPolyline); }
 }
 
 export function setPredictionVisible(visible: boolean): void {
-  if (visible) predPolyline?.show();
-  else predPolyline?.hide();
+  if (!currentMap) return;
+  if (predPolyline) { visible ? predPolyline.addTo(currentMap) : currentMap.removeLayer(predPolyline); }
 }

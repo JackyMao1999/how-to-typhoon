@@ -1,9 +1,10 @@
+import L from 'leaflet';
 import { TyphoonStatus } from '../../types/typhoon';
 import { destinationPoint } from '../../utils/geo';
-import { wgs84ToGcj02Batch } from '../../utils/coord';
 
 let polygon24: any = null;
 let polygon48: any = null;
+let currentMap: any = null;
 
 function generateCirclePoints(
   centerLng: number, centerLat: number,
@@ -23,50 +24,55 @@ export function updateWarningLayers(
   predCoords24: [number, number],
   predCoords48: [number, number],
 ): void {
+  currentMap = map;
   const speed = status.maxWindSpeed;
   const radius24 = Math.round(80 + (speed / 50) * 20);
   const radius48 = Math.round(145 + (speed / 50) * 25);
 
   const wgs24 = generateCirclePoints(predCoords24[0], predCoords24[1], radius24);
   const wgs48 = generateCirclePoints(predCoords48[0], predCoords48[1], radius48);
-  const gcj24 = wgs84ToGcj02Batch(wgs24);
-  const gcj48 = wgs84ToGcj02Batch(wgs48);
+  const latlngs24 = wgs24.map(([lng, lat]) => [lat, lng] as [number, number]);
+  const latlngs48 = wgs48.map(([lng, lat]) => [lat, lng] as [number, number]);
 
   if (polygon24) {
-    polygon24.setPath(gcj24);
-    polygon48.setPath(gcj48);
+    polygon24.setLatLngs(latlngs24);
+    polygon48.setLatLngs(latlngs48);
     return;
   }
 
-  polygon24 = new window.AMap.Polygon({
-    path: gcj24,
+  polygon24 = L.polygon(latlngs24, {
+    color: '#FFA500',
+    weight: 2,
+    opacity: 0.7,
     fillColor: '#FFA500',
     fillOpacity: 0.2,
-    strokeColor: '#FFA500',
-    strokeWeight: 2,
-    strokeOpacity: 0.7,
-    strokeStyle: 'dashed',
-  });
+    dashArray: '8 6',
+    interactive: false,
+  }).addTo(map);
 
-  polygon48 = new window.AMap.Polygon({
-    path: gcj48,
+  polygon48 = L.polygon(latlngs48, {
+    color: '#0064FF',
+    weight: 2,
+    opacity: 0.5,
     fillColor: '#0064FF',
     fillOpacity: 0.1,
-    strokeColor: '#0064FF',
-    strokeWeight: 2,
-    strokeOpacity: 0.5,
-    strokeStyle: 'dashed',
-  });
-
-  map.add([polygon24, polygon48]);
+    dashArray: '8 6',
+    interactive: false,
+  }).addTo(map);
 }
 
 export function removeWarningLayers(map: any): void {
-  if (polygon24) { map.remove(polygon24); polygon24 = null; }
-  if (polygon48) { map.remove(polygon48); polygon48 = null; }
+  if (polygon24) { map.removeLayer(polygon24); polygon24 = null; }
+  if (polygon48) { map.removeLayer(polygon48); polygon48 = null; }
 }
 
 export function setWarningVisible(visible: boolean): void {
-  if (polygon24) { visible ? polygon24.show() : polygon24.hide(); }
-  if (polygon48) { visible ? polygon48.show() : polygon48.hide(); }
+  if (!currentMap || !polygon24) return;
+  if (visible) {
+    polygon24.addTo(currentMap);
+    polygon48.addTo(currentMap);
+  } else {
+    currentMap.removeLayer(polygon24);
+    currentMap.removeLayer(polygon48);
+  }
 }

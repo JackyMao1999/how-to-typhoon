@@ -42,7 +42,7 @@ export function Timeline() {
     : `${history.length} 步`;
 
   return (
-    <div id="timeline" className="absolute bottom-3 left-3 right-3 md:bottom-5 md:left-1/2 md:right-auto md:-translate-x-1/2 z-10">
+    <div id="timeline" className="absolute bottom-3 left-3 right-3 md:bottom-5 md:left-1/2 md:right-auto md:-translate-x-1/2 z-[804]">
       <div className="panel px-3 py-3 md:px-5 flex flex-col md:flex-row md:items-center gap-3 md:gap-5 font-mono">
         <div className="flex items-center gap-3">
         <button id="timeline-reset" onClick={reset}

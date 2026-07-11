@@ -10,7 +10,7 @@ export function WindDetail() {
   if (!detailPanelOpen || !hoveredPoint) return null;
 
   return (
-    <div className="absolute bottom-32 md:bottom-20 left-3 md:left-4 z-10 panel p-4 font-mono text-sm min-w-[220px]">
+    <div className="absolute bottom-32 md:bottom-20 left-3 md:left-4 z-[807] panel p-4 font-mono text-sm min-w-[220px]">
       <div className="flex items-center justify-between mb-2">
         <span className="panel-title">Wind Detail</span>
         <button

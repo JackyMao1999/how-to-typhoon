@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { useMap } from '../map/GaodeProvider';
+import { useMap } from '../map/MapProvider';
 import { useTyphoonStore, useDisplayState } from '../store/typhoonStore';
 import { useUIStore } from '../store/uiStore';
 import { ParticleSystem } from './ParticleSystem';
@@ -7,7 +7,7 @@ import { EyeEffect } from './EyeEffect';
 import { WindCircleGlow } from './WindCircleGlow';
 import { WindField } from './WindField';
 import { CloudBand } from './CloudBand';
-import { wgs84ToGcj02 } from '../utils/coord';
+import L from 'leaflet';
 import { getEyeSpeedMul, getGlowSpeedMul, getTyphoonLevel } from '../engine';
 import { TYPHOON_LEVEL_CONFIG, TyphoonLevel } from '../types/typhoon';
 
@@ -98,8 +98,7 @@ export function RendererOverlay() {
         const ndcScale = zoomScale * NDC_PER_UNIT;
 
         const s = stateRef.current;
-        const [gcjLng, gcjLat] = wgs84ToGcj02(s.centerLng, s.centerLat);
-        const pixel = map.lngLatToContainer([gcjLng, gcjLat]);
+        const pixel = map.latLngToContainerPoint(L.latLng(s.centerLat, s.centerLng));
         if (!pixel || isNaN(pixel.x) || isNaN(pixel.y)) return;
 
         // 台风在屏幕外超出一定距离则跳过渲染（防止日界线附近坐标异常）
@@ -164,7 +163,7 @@ export function RendererOverlay() {
     <canvas
       ref={webglRef}
       className="absolute inset-0 pointer-events-none"
-      style={{ zIndex: 2 }}
+      style={{ zIndex: 500 }}
     />
   );
 }

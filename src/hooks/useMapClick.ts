@@ -1,10 +1,9 @@
 import { useEffect, useCallback, useState } from 'react';
-import { useMap } from '../map/GaodeProvider';
+import { useMap } from '../map/MapProvider';
 import { useUIStore } from '../store/uiStore';
 import { useTyphoonStore, useDisplayState } from '../store/typhoonStore';
 import { WindLevel } from '../types/typhoon';
 import { haversineDistance } from '../utils/geo';
-import { gcj02ToWgs84 } from '../utils/coord';
 import { isOverLand } from '../engine/landmass';
 import { getLocationInfo } from '../engine/landmass';
 import { computeSeaTemp, computeLandTemp, computeVerticalWindShear, computeOceanHeatContent, computeMidLevelHumidity, computeFormationPotential, describeFormationBlockers } from '../engine';
@@ -51,12 +50,11 @@ export function useMapClick() {
 
   const handleClick = useCallback(
     (e: any) => {
-      const lnglat = e.lnglat || e.lngLat;
-      if (!lnglat) return;
+      const latlng = e.latlng;
+      if (!latlng) return;
 
-      const gcjLng = lnglat.getLng();
-      const gcjLat = lnglat.getLat();
-      const [wgsLng, wgsLat] = gcj02ToWgs84(gcjLng, gcjLat);
+      const wgsLng = latlng.lng;
+      const wgsLat = latlng.lat;
 
       const dist = haversineDistance(displayState.centerLng, displayState.centerLat, wgsLng, wgsLat);
 
@@ -111,11 +109,10 @@ export function useMapClick() {
 
   const handleMouseMove = useCallback(
     (e: any) => {
-      const lnglat = e.lnglat;
-      if (!lnglat) return;
-      const gcjLng = lnglat.getLng();
-      const gcjLat = lnglat.getLat();
-      const [wgsLng, wgsLat] = gcj02ToWgs84(gcjLng, gcjLat);
+      const latlng = e.latlng;
+      if (!latlng) return;
+      const wgsLng = latlng.lng;
+      const wgsLat = latlng.lat;
       const pos = getMouseClientPosition(e, map);
       if (!pos) return;
 

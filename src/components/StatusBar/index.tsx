@@ -19,7 +19,7 @@ export function StatusBar() {
     : 'bg-gray-600/25 text-gray-300 border-gray-500/40';
 
   return (
-    <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none">
+    <div className="absolute top-0 left-0 right-0 z-[801] pointer-events-none">
       <div className="flex items-center min-h-[48px] px-3 md:px-5 bg-dark-bg/72 backdrop-blur-md border-b border-cyan-300/10 shadow-lg shadow-black/20">
         <div className="flex min-w-0 items-center gap-2 md:gap-4 pointer-events-auto">
           <span id="status-mode" className={`badge ${modeColor}`}>{mode}</span>

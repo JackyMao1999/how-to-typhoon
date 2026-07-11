@@ -108,7 +108,7 @@ export function ControlPanel() {
   ];
 
   return (
-    <div className="absolute top-16 right-3 md:right-4 z-10">
+    <div className="absolute top-16 right-3 md:right-4 z-[803]">
       <button id="ctrl-toggle-btn"
         onClick={() => setOpen(!open)}
         className="glass-button rounded-xl px-3.5 py-2 text-sm font-semibold cursor-pointer shadow-lg shadow-black/20"
@@ -222,7 +222,7 @@ function InfoIcon({ info }: { info: { title: string; desc: string; effect: strin
   return (
     <span className="group relative inline-flex items-center justify-center w-4 h-4 rounded-full border border-gray-500 text-gray-400 text-[10px] cursor-help ml-1 hover:border-typhoon-lv7 hover:text-typhoon-lv7 transition-colors leading-none shrink-0">
       !
-      <div className="absolute top-full right-0 md:left-1/2 md:right-auto md:-translate-x-1/2 mt-2 w-56 p-2.5 bg-dark-bg border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-20">
+      <div className="absolute top-full right-0 md:left-1/2 md:right-auto md:-translate-x-1/2 mt-2 w-56 p-2.5 bg-dark-bg border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-[805]">
         <div className="text-typhoon-lv7 text-xs font-bold mb-1">{info.title}</div>
         <div className="text-gray-300 text-[10px] leading-relaxed mb-1">{info.desc}</div>
         <div className="text-gray-500 text-[9px] italic">{info.effect}</div>

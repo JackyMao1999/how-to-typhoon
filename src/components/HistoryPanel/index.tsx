@@ -37,7 +37,7 @@ export function HistoryPanel() {
   };
 
   return (
-    <div className="absolute bottom-32 md:bottom-24 right-3 md:right-4 z-10">
+    <div className="absolute bottom-32 md:bottom-24 right-3 md:right-4 z-[806]">
       <button id="history-btn"
         onClick={() => setOpen(!open)}
         className="glass-button rounded-xl px-3 py-2 text-xs font-semibold"

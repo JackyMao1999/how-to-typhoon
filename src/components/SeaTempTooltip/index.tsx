@@ -17,7 +17,7 @@ export function SeaTempTooltip({ sst }: { sst: SSTDisplay | null }) {
 
   return (
     <div
-      className="fixed z-50 pointer-events-none font-mono text-xs"
+      className="fixed z-[808] pointer-events-none font-mono text-xs"
       style={{ left, top }}
     >
       <div className="panel px-2.5 py-1.5">

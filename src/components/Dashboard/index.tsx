@@ -17,7 +17,7 @@ export function Dashboard() {
   };
 
   return (
-    <div id="info-panel" className="absolute top-16 left-3 right-3 md:right-auto md:left-4 z-10 panel p-4 md:p-5 md:min-w-[320px] md:max-w-[340px] font-mono">
+    <div id="info-panel" className="absolute top-16 left-3 right-3 md:right-auto md:left-4 z-[802] panel p-4 md:p-5 md:min-w-[320px] md:max-w-[340px] font-mono">
       <div className="flex items-start gap-3 mb-4">
         <div className="min-w-0">
           <div className="panel-title mb-1">Typhoon Monitor</div>

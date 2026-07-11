@@ -1,6 +1,6 @@
 import { TyphoonStatus, WindLevel, WIND_LEVEL_COLORS } from '../../types/typhoon';
 import { generateWindCirclePolygon } from '../../utils/geo';
-import { wgs84ToGcj02Batch } from '../../utils/coord';
+import L from 'leaflet';
 
 interface LayerGroup {
   fill: any;
@@ -8,6 +8,7 @@ interface LayerGroup {
 }
 
 const layers = new Map<WindLevel, LayerGroup>();
+let currentMap: any = null;
 
 const OPACITY: Record<WindLevel, number> = {
   [WindLevel.LV7]: 0.08,
@@ -22,6 +23,7 @@ const STROKE_WEIGHT: Record<WindLevel, number> = {
 };
 
 export function updateWindCircleLayers(map: any, status: TyphoonStatus): void {
+  currentMap = map;
   const levels = [WindLevel.LV7, WindLevel.LV10, WindLevel.LV12];
 
   for (const level of levels) {
@@ -29,8 +31,8 @@ export function updateWindCircleLayers(map: any, status: TyphoonStatus): void {
     if (!radii) {
       const existing = layers.get(level);
       if (existing) {
-        existing.fill.hide();
-        existing.outline.hide();
+        map.removeLayer(existing.fill);
+        map.removeLayer(existing.outline);
       }
       continue;
     }
@@ -40,7 +42,7 @@ export function updateWindCircleLayers(map: any, status: TyphoonStatus): void {
       status.centerLat,
       { ne: radii.ne, nw: radii.nw, se: radii.se, sw: radii.sw }
     );
-    const gcjPoints = wgs84ToGcj02Batch(wgsPoints);
+    const latlngs = wgsPoints.map(([lng, lat]) => [lat, lng] as [number, number]);
 
     const color = WIND_LEVEL_COLORS[level];
     const opacity = OPACITY[level];
@@ -49,51 +51,47 @@ export function updateWindCircleLayers(map: any, status: TyphoonStatus): void {
     const existing = layers.get(level);
 
     if (existing) {
-      existing.fill.setPath(gcjPoints);
-      existing.outline.setPath(gcjPoints);
-      existing.fill.show();
-      existing.outline.show();
+      existing.fill.setLatLngs(latlngs);
+      existing.outline.setLatLngs(latlngs);
       continue;
     }
 
-    const fill = new window.AMap.Polygon({
-      path: gcjPoints,
+    const fill = L.polygon(latlngs, {
+      color: 'transparent',
       fillColor: color,
       fillOpacity: opacity,
-      strokeColor: color,
-      strokeWeight: 0,
-      strokeOpacity: 0,
-    });
+      interactive: false,
+    }).addTo(map);
 
-    const outline = new window.AMap.Polyline({
-      path: gcjPoints,
-      strokeColor: color,
-      strokeWeight: weight,
-      strokeOpacity: 0.6,
-      strokeStyle: 'dashed',
-      borderWeight: 0,
-    });
+    const outline = L.polyline(latlngs, {
+      color: color,
+      weight: weight,
+      opacity: 0.6,
+      dashArray: '8 6',
+      interactive: false,
+    }).addTo(map);
 
     layers.set(level, { fill, outline });
-    map.add([fill, outline]);
   }
 }
 
 export function setWindCirclesVisible(visible: boolean): void {
+  if (!currentMap) return;
   for (const [, group] of layers) {
     if (visible) {
-      group.fill.show();
-      group.outline.show();
+      group.fill.addTo(currentMap);
+      group.outline.addTo(currentMap);
     } else {
-      group.fill.hide();
-      group.outline.hide();
+      currentMap.removeLayer(group.fill);
+      currentMap.removeLayer(group.outline);
     }
   }
 }
 
 export function removeWindCircleLayers(map: any): void {
   for (const [, group] of layers) {
-    map.remove([group.fill, group.outline]);
+    map.removeLayer(group.fill);
+    map.removeLayer(group.outline);
   }
   layers.clear();
 }
