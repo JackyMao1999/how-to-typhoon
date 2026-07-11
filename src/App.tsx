@@ -13,8 +13,11 @@ import { useUIStore } from './store/uiStore';
 import { useTyphoonSimulation } from './hooks/useTyphoonSimulation';
 import { useMapClick } from './hooks/useMapClick';
 import { SeaTempTooltip } from './components/SeaTempTooltip';
+import { AlertToastContainer } from './components/AlertToast';
 import { updateWindCircleLayers, setWindCirclesVisible } from './map/layers/windCircleLayer';
 import { updatePathLayer, updatePredictionLayer, setPathVisible, setPredictionVisible } from './map/layers/pathLayer';
+import { updateRegionLayers } from './map/layers/regionLayer';
+import { updateCoastlineLayer, setCoastlineVisible, removeCoastlineLayer } from './map/layers/coastlineLayer';
 import { useMap } from './map/GaodeProvider';
 import { getAmapKey } from './utils/token';
 import { predictPath } from './engine';
@@ -43,7 +46,9 @@ function MapLayers() {
   const showWindCircles = useUIStore((s) => s.showWindCircles);
   const showPath = useUIStore((s) => s.showPath);
   const showPrediction = useUIStore((s) => s.showPrediction);
+  const showCoastline = useUIStore((s) => s.showCoastline);
   const [hoveredNode, setHoveredNode] = useState<{ x: number; y: number; text: string; color: string; time: string } | null>(null);
+  const monitoredRegions = useUIStore((s) => s.monitoredRegions);
 
   const predCoords = fullHistory.length > 1 ? predictPath(displayState, engineConfig, 48) : [];
 
@@ -66,6 +71,24 @@ function MapLayers() {
   useEffect(() => { setWindCirclesVisible(showWindCircles); }, [showWindCircles]);
   useEffect(() => { setPathVisible(showPath); }, [showPath]);
   useEffect(() => { setPredictionVisible(showPrediction); }, [showPrediction]);
+  useEffect(() => { setCoastlineVisible(showCoastline); }, [showCoastline]);
+
+  useEffect(() => {
+    if (!map || !isLoaded || !showCoastline) return;
+    const handler = () => updateCoastlineLayer(map);
+    map.on('moveend', handler);
+    map.on('zoomend', handler);
+    updateCoastlineLayer(map);
+    return () => {
+      map.off('moveend', handler);
+      map.off('zoomend', handler);
+    };
+  }, [map, isLoaded, showCoastline]);
+
+  useEffect(() => {
+    if (!map || !isLoaded) return;
+    updateRegionLayers(map, monitoredRegions);
+  }, [map, isLoaded, monitoredRegions]);
 
   useEffect(() => {
     if (!map || !isLoaded || fullHistory.length < 2) return;
@@ -123,6 +146,8 @@ function SimulationInit() {
 function MapApp() {
   useTyphoonSimulation();
   const sst = useMapClick();
+  const alerts = useUIStore((s) => s.alerts);
+  const dismissAlert = useUIStore((s) => s.dismissAlert);
 
   return (
     <>
@@ -136,6 +161,7 @@ function MapApp() {
       <Timeline />
       <WindDetail />
       <SeaTempTooltip sst={sst} />
+      <AlertToastContainer alerts={alerts} onDismiss={dismissAlert} />
     </>
   );
 }

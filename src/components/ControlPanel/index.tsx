@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTyphoonStore } from '../../store/typhoonStore';
 import { useUIStore } from '../../store/uiStore';
+import { PREDEFINED_REGIONS } from '../../data/regions';
 
 const PARAM_INFO: Record<string, { title: string; desc: string; effect: string }> = {
   subtropicalHighStrength: {
@@ -50,7 +51,7 @@ const PARAM_INFO: Record<string, { title: string; desc: string; effect: string }
   },
 };
 
-type AutoKey = 'seaSurfaceTemp' | 'landTemperature' | 'frictionCoefficient' | 'subtropicalHighStrength' | 'subtropicalHighDirection';
+type AutoKey = 'seaSurfaceTemp' | 'landTemperature' | 'frictionCoefficient' | 'subtropicalHighStrength' | 'subtropicalHighDirection' | 'verticalWindShear' | 'oceanHeatContent' | 'midLevelHumidity' | 'stormSize';
 
 const SEASONS = ['spring', 'summer', 'autumn', 'winter'] as const;
 
@@ -61,6 +62,7 @@ const TOGGLE_IDS: Record<string, string> = {
   '风圈': 'ctrl-toggle-windcircle',
   '路径预测': 'ctrl-toggle-prediction',
   '历史路径': 'ctrl-toggle-path',
+  '海岸线': 'ctrl-toggle-coastline',
 };
 
 export function ControlPanel() {
@@ -77,12 +79,16 @@ export function ControlPanel() {
   const showWindField = useUIStore((s) => s.showWindField);
   const showPath = useUIStore((s) => s.showPath);
   const showPrediction = useUIStore((s) => s.showPrediction);
+  const showCoastline = useUIStore((s) => s.showCoastline);
   const toggleParticles = useUIStore((s) => s.toggleParticles);
   const toggleCloudBands = useUIStore((s) => s.toggleCloudBands);
   const toggleWindCircles = useUIStore((s) => s.toggleWindCircles);
+  const toggleRegionMonitor = useUIStore((s) => s.toggleRegionMonitor);
+  const isRegionMonitored = useUIStore((s) => s.isRegionMonitored);
   const toggleWindField = useUIStore((s) => s.toggleWindField);
   const togglePath = useUIStore((s) => s.togglePath);
   const togglePrediction = useUIStore((s) => s.togglePrediction);
+  const toggleCoastline = useUIStore((s) => s.toggleCoastline);
 
   const [open, setOpen] = React.useState(false);
 
@@ -94,11 +100,11 @@ export function ControlPanel() {
     { key: 'frictionCoefficient', label: '摩擦系数', value: engineConfig.frictionCoefficient, min: 0, max: 1, step: 0.05, autoKey: 'frictionCoefficient' },
   ];
 
-  const advancedSliders: { key: string; label: string; value: number; min: number; max: number; step: number; suffix?: string }[] = [
-    { key: 'verticalWindShear', label: '风切变', value: engineConfig.verticalWindShear, min: 0, max: 40, step: 1, suffix: 'm/s' },
-    { key: 'oceanHeatContent', label: '热含量', value: engineConfig.oceanHeatContent, min: 0, max: 1, step: 0.05 },
-    { key: 'midLevelHumidity', label: '湿度', value: engineConfig.midLevelHumidity, min: 30, max: 95, step: 1, suffix: '%' },
-    { key: 'stormSize', label: '尺度', value: engineConfig.stormSize, min: 0, max: 1, step: 0.05 },
+  const advancedSliders: { key: string; label: string; value: number; min: number; max: number; step: number; suffix?: string; autoKey: AutoKey }[] = [
+    { key: 'verticalWindShear', label: '风切变', value: engineConfig.verticalWindShear, min: 0, max: 40, step: 1, suffix: 'm/s', autoKey: 'verticalWindShear' },
+    { key: 'oceanHeatContent', label: '热含量', value: engineConfig.oceanHeatContent, min: 0, max: 1, step: 0.05, autoKey: 'oceanHeatContent' },
+    { key: 'midLevelHumidity', label: '湿度', value: engineConfig.midLevelHumidity, min: 30, max: 95, step: 1, suffix: '%', autoKey: 'midLevelHumidity' },
+    { key: 'stormSize', label: '尺度', value: engineConfig.stormSize, min: 0, max: 1, step: 0.05, autoKey: 'stormSize' },
   ];
 
   return (
@@ -133,10 +139,11 @@ export function ControlPanel() {
               <span className="text-[10px] text-gray-500">高级情景</span>
             </div>
             <div className="space-y-2.5">
-              {advancedSliders.map(({ key, label, value, min, max, step, suffix }) => (
-                <SimpleSliderRow key={key} id={`ctrl-slider-${key}`} label={label} value={value} min={min} max={max} step={step} suffix={suffix}
-                  info={PARAM_INFO[key]}
-                  onChange={(v) => updateEngineConfig({ [key]: v } as any)} />
+              {advancedSliders.map(({ key, label, value, min, max, step, suffix, autoKey }) => (
+                <SliderRow key={key} id={`ctrl-slider-${key}`} label={label} value={value} min={min} max={max} step={step} suffix={suffix}
+                  autoOn={autoOverrides[autoKey]} info={PARAM_INFO[key]}
+                  onChange={(v) => { if (autoOverrides[autoKey]) toggleAutoOverride(autoKey); updateEngineConfig({ [key]: v } as any); }}
+                  onToggleAuto={() => toggleAutoOverride(autoKey)} />
               ))}
             </div>
           </div>
@@ -165,6 +172,23 @@ export function ControlPanel() {
           </div>
 
           <div className="pt-3 border-t border-gray-700/30">
+            <h3 className="panel-title mb-2 font-sans">Alert Regions</h3>
+            <div className="grid grid-cols-2 gap-1.5">
+              {PREDEFINED_REGIONS.map((r) => (
+                <label key={r.id} className="flex items-center gap-2 cursor-pointer rounded-lg border border-gray-700/30 bg-dark-bg/30 px-2 py-1.5 text-[10px] text-gray-300 transition-colors hover:border-cyan-300/30">
+                  <input
+                    type="checkbox"
+                    checked={isRegionMonitored(r.id)}
+                    onChange={() => toggleRegionMonitor(r.id)}
+                    className="w-3 h-3 accent-typhoon-lv7 rounded"
+                  />
+                  <span>{r.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-gray-700/30">
             <h3 className="panel-title mb-2 font-sans">Season</h3>
             <div className="segmented">
               {SEASONS.map((s) => (
@@ -185,6 +209,7 @@ export function ControlPanel() {
               <Toggle id={TOGGLE_IDS['风圈']} label="风圈" checked={showWindCircles} onChange={toggleWindCircles} />
               <Toggle id={TOGGLE_IDS['路径预测']} label="路径预测" checked={showPrediction} onChange={togglePrediction} />
               <Toggle id={TOGGLE_IDS['历史路径']} label="历史路径" checked={showPath} onChange={togglePath} />
+              <Toggle id={TOGGLE_IDS['海岸线']} label="海岸线" checked={showCoastline} onChange={toggleCoastline} />
             </div>
           </div>
         </div>
@@ -228,26 +253,6 @@ function SliderRow({ id, label, value, min, max, step, suffix = '', autoOn, info
         }`}>
         {autoOn ? 'A' : 'M'}
       </button>
-    </div>
-  );
-}
-
-function SimpleSliderRow({ id, label, value, min, max, step, suffix = '', info, onChange }: {
-  id: string; label: string; value: number; min: number; max: number; step: number; suffix?: string;
-  info: { title: string; desc: string; effect: string };
-  onChange: (v: number) => void;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="text-gray-400 text-xs w-auto min-w-[58px] shrink-0 flex items-center">
-        {label}<InfoIcon info={info} />
-      </span>
-      <input id={id} type="range" min={min} max={max} step={step} value={value}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
-        className="flex-1 h-1.5 accent-typhoon-lv7 min-w-0 rounded-full" />
-      <span className="text-gray-200 text-xs w-12 text-right shrink-0 font-mono">
-        {step >= 1 ? value.toFixed(0) : value.toFixed(2)}{suffix}
-      </span>
     </div>
   );
 }

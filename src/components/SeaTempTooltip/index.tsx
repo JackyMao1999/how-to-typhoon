@@ -7,6 +7,7 @@ interface SSTDisplay {
   label: string;
   lng: number;
   lat: number;
+  locationName?: string;
 }
 
 export function SeaTempTooltip({ sst }: { sst: SSTDisplay | null }) {
@@ -20,13 +21,16 @@ export function SeaTempTooltip({ sst }: { sst: SSTDisplay | null }) {
       style={{ left, top }}
     >
       <div className="panel px-2.5 py-1.5">
-        <span className="text-gray-300">{sst.label} </span>
-        <span className={sst.temp >= 26.5 ? 'text-red-400' : 'text-blue-400'}>
-          {sst.temp.toFixed(1)}°C
-        </span>
-        <span className="text-gray-600 ml-1">
-          {sst.lat.toFixed(1)}°N
-        </span>
+        <div className="text-gray-500 mb-0.5 text-[10px]">{sst.locationName}</div>
+        <div>
+          <span className="text-gray-300">{sst.label} </span>
+          <span className={sst.temp >= 26.5 ? 'text-red-400' : 'text-blue-400'}>
+            {sst.temp.toFixed(1)}°C
+          </span>
+          <span className="text-gray-600 ml-1">
+            {sst.lat.toFixed(1)}°N
+          </span>
+        </div>
       </div>
     </div>
   );

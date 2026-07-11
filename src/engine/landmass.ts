@@ -1,36 +1,73 @@
-/**
- * 西北太平洋陆地边界框检测
- *
- * 当台风中心进入下列任意方块时，判定为登陆。
- * 坐标为 GCJ-02 / WGS-84 均可（西北太平洋偏移约 0.01° 不影响判定）。
- */
+import { GSHHG_COASTLINE } from '../data/landmask/coastline';
+import { isOverLandFromGrid, getLandGridData } from '../data/landmask/grid';
+import { pointInPolygon, pointInAnyPolygon } from '../data/landmass/pointInPolygon';
 
-interface BBox {
-  name: string;
-  west: number;
-  east: number;
-  south: number;
-  north: number;
+let gridData: Uint8Array | null = null;
+function getGrid(): Uint8Array {
+  if (!gridData) gridData = getLandGridData();
+  return gridData;
 }
 
-const LAND_BOXES: BBox[] = [
-  { name: '菲律宾', west: 116, east: 126, south: 5, north: 20 },
-  { name: '台湾', west: 119, east: 122, south: 22, north: 26 },
-  { name: '中国大陆', west: 110, east: 122, south: 20, north: 45 },
-  { name: '中国内陆', west: 105, east: 115, south: 20, north: 40 },
-  { name: '日本', west: 129, east: 145, south: 30, north: 45 },
-  { name: '朝鲜半岛', west: 124, east: 130, south: 34, north: 43 },
-  { name: '越南沿海', west: 106, east: 110, south: 8, north: 23 },
-];
-
 export function isOverLand(lng: number, lat: number): boolean {
-  for (const box of LAND_BOXES) {
-    if (
-      lng >= box.west && lng <= box.east &&
-      lat >= box.south && lat <= box.north
-    ) {
-      return true;
-    }
+  if (isOverLandFromGrid(lng, lat)) return true;
+  for (let i = 0; i < GSHHG_COASTLINE.length && i < 100; i++) {
+    if (pointInPolygon(lng, lat, GSHHG_COASTLINE[i])) return true;
   }
   return false;
+}
+
+// Heuristic continent/ocean naming by bounding box
+export function getContinent(lng: number, lat: number): string | null {
+  if (!isOverLand(lng, lat)) return null;
+  if (lat < -35 && lng > 110 && lng < 155) return 'Oceania';
+  if (lng > 35 && lng < 70 && lat > 0 && lat < 40) return 'Asia';
+  if (lng > 70 && lng < 180 && lat > -15 && lat < 60) return 'Asia';
+  if (lng > -10 && lng < 40 && lat > 0 && lat < 40) return 'Africa';
+  if (lng > -10 && lng < 40 && lat > 35 && lat < 75) return 'Europe';
+  if (lng > -180 && lng < -80 && lat > 10 && lat < 60) return 'North America';
+  if (lng > -90 && lng < -30 && lat > -60 && lat < 10) return 'South America';
+  if (lng < -90 && lat > -80 && lat < -50) return 'South America';
+  if (lng > -10 && lng < 70 && lat < 0 && lat > -35) return 'Africa';
+  if (lng > -180 && lng < -20 && lat > 60) return 'North America';
+  return null;
+}
+
+export function getOcean(lng: number, lat: number): string | null {
+  if (lng > 100 && lng < 180 && lat > -70 && lat < 70) return 'Pacific';
+  if (lng > -180 && lng < -70 && lat > -70 && lat < 70) return 'Pacific';
+  if (lng > -70 && lng < 30 && lat > -70 && lat < 70) return 'Atlantic';
+  if (lng > 30 && lng < 100 && lat > -70 && lat < 30) return 'Indian';
+  if (lat > 65) return 'Arctic';
+  return null;
+}
+
+export interface LocationInfo {
+  type: 'land' | 'ocean';
+  continent: string | null;
+  ocean: string | null;
+  locationName: string;
+}
+
+const OCEAN_CN: Record<string, string> = {
+  Pacific: '太平洋',
+  Atlantic: '大西洋',
+  Indian: '印度洋',
+  Arctic: '北冰洋',
+};
+
+export function getLocationInfo(lng: number, lat: number): LocationInfo {
+  if (isOverLand(lng, lat)) {
+    const continent = getContinent(lng, lat);
+    if (continent) {
+      return { type: 'land', continent, ocean: null, locationName: continent };
+    }
+    if (lat > 55 && lng > -180 && lng < -20) return { type: 'land', continent: 'North America', ocean: null, locationName: 'North America' };
+    return { type: 'land', continent: null, ocean: null, locationName: '陆地' };
+  }
+
+  const ocean = getOcean(lng, lat);
+  if (ocean) {
+    return { type: 'ocean', continent: null, ocean, locationName: OCEAN_CN[ocean] || ocean };
+  }
+  return { type: 'ocean', continent: null, ocean: null, locationName: '海洋' };
 }

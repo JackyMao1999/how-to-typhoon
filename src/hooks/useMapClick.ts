@@ -6,7 +6,8 @@ import { WindLevel } from '../types/typhoon';
 import { haversineDistance } from '../utils/geo';
 import { gcj02ToWgs84 } from '../utils/coord';
 import { isOverLand } from '../engine/landmass';
-import { computeSeaTemp, computeLandTemp } from '../engine';
+import { getLocationInfo } from '../engine/landmass';
+import { computeSeaTemp, computeLandTemp, computeVerticalWindShear, computeOceanHeatContent, computeMidLevelHumidity, computeFormationPotential, describeFormationBlockers } from '../engine';
 
 export interface SSTDisplay {
   x: number;
@@ -15,6 +16,7 @@ export interface SSTDisplay {
   label: string;
   lng: number;
   lat: number;
+  locationName?: string;
 }
 
 function getMouseClientPosition(e: any, map: any): { x: number; y: number } | null {
@@ -43,6 +45,8 @@ export function useMapClick() {
   const setDetailPanelOpen = useUIStore((s) => s.setDetailPanelOpen);
   const displayState = useDisplayState();
   const spawnAt = useTyphoonStore((s) => s.spawnAt);
+  const engineConfig = useTyphoonStore((s) => s.engineConfig);
+  const addAlert = useUIStore((s) => s.addAlert);
   const [sstDisplay, setSSTDisplay] = useState<SSTDisplay | null>(null);
 
   const handleClick = useCallback(
@@ -73,11 +77,34 @@ export function useMapClick() {
           distance: Math.round(dist),
         });
         setDetailPanelOpen(true);
-      } else if (!isOverLand(wgsLng, wgsLat)) {
-        spawnAt(wgsLng, wgsLat);
+        return;
       }
+
+      const season = useTyphoonStore.getState().season;
+      const sst = computeSeaTemp(wgsLat, season);
+      const shear = computeVerticalWindShear(wgsLat, season);
+      const humidity = computeMidLevelHumidity(wgsLat, season);
+      const ohc = computeOceanHeatContent(sst, season);
+      const land = isOverLand(wgsLng, wgsLat);
+      const fp = computeFormationPotential(sst, shear, humidity, ohc, wgsLat, land);
+
+      if (fp.overall < 0.2) {
+        const blockers = describeFormationBlockers(fp);
+        addAlert({
+          id: `no-fc-${Date.now()}`,
+          regionName: '该海域',
+          typhoonName: '',
+          level: 'yellow',
+          distance: 0,
+          timestamp: Date.now(),
+          message: `环境不利，无法形成台风\n${blockers.join('、')}\n成环潜力: ${(fp.overall * 100).toFixed(0)}%`,
+        });
+        return;
+      }
+
+      spawnAt(wgsLng, wgsLat);
     },
-    [displayState, setHoveredPoint, setDetailPanelOpen, spawnAt]
+    [displayState, setHoveredPoint, setDetailPanelOpen, spawnAt, addAlert]
   );
 
   const season = useTyphoonStore((s) => s.season);
@@ -94,6 +121,7 @@ export function useMapClick() {
 
       const land = isOverLand(wgsLng, wgsLat);
       const temp = land ? computeLandTemp(wgsLat, season) : computeSeaTemp(wgsLat, season);
+      const loc = getLocationInfo(wgsLng, wgsLat);
       setSSTDisplay({
         x: pos.x,
         y: pos.y,
@@ -101,6 +129,7 @@ export function useMapClick() {
         label: land ? '陆温' : '海温',
         lng: wgsLng,
         lat: wgsLat,
+        locationName: loc.locationName,
       });
     },
     [map, season]

@@ -6,13 +6,16 @@ import {
   LifeStage,
 } from '../types/typhoon';
 import { DEFAULT_ENGINE_CONFIG, DEFAULT_BASE_RADII, EngineConfig } from '../types/engine';
-import { TyphoonEngine, TyphoonSimulation, computeSeaTemp, computeLandTemp, computeFriction, determineLifeStage } from '../engine';
+import { TyphoonEngine, TyphoonSimulation, computeSeaTemp, computeLandTemp, computeFriction, computeVerticalWindShear, computeOceanHeatContent, computeMidLevelHumidity, computeStormSize, computeFormationPotential, determineLifeStage } from '../engine';
 import { Season, SEASON_OFFSET } from '../types/engine';
 import { HistoricalTyphoon } from '../types/historicalTyphoon';
 import { BUILTIN_HISTORICAL_TYPHOONS } from '../data/historical/samples';
 import { historicalToStatuses, statusesToTrackPoints } from '../data/historical/convert';
+import { PREDEFINED_REGIONS } from '../data/regions';
+import { distanceToRegion, getAlertLevel } from '../types/region';
+import { useUIStore } from './uiStore';
 
-type AutoKey = 'seaSurfaceTemp' | 'landTemperature' | 'frictionCoefficient' | 'subtropicalHighStrength' | 'subtropicalHighDirection';
+type AutoKey = 'seaSurfaceTemp' | 'landTemperature' | 'frictionCoefficient' | 'subtropicalHighStrength' | 'subtropicalHighDirection' | 'verticalWindShear' | 'oceanHeatContent' | 'midLevelHumidity' | 'stormSize';
 
 type SeasonKey = 'spring' | 'summer' | 'autumn' | 'winter';
 
@@ -34,13 +37,22 @@ function randomName(): string {
   return TYPHOON_NAMES[Math.floor(Math.random() * TYPHOON_NAMES.length)];
 }
 
-function createInitialStatus(lng?: number, lat?: number): TyphoonStatus {
+function createInitialStatus(lng?: number, lat?: number, config?: EngineConfig): TyphoonStatus {
   const id = typhoonId++;
   const name = randomName();
   const cLng = lng ?? 140;
   const cLat = lat ?? 18;
 
-  const speed = 12 + Math.random() * 3;
+  let speed: number;
+  if (config) {
+    const fc = computeFormationPotential(config.seaSurfaceTemp, config.verticalWindShear, config.midLevelHumidity, config.oceanHeatContent, cLat, false);
+    if (fc.overall < 0.2) speed = 5 + Math.random() * 3;
+    else if (fc.overall < 0.4) speed = 8 + Math.random() * 4;
+    else if (fc.overall < 0.6) speed = 12 + Math.random() * 4;
+    else speed = 16 + Math.random() * 6;
+  } else {
+    speed = 12 + Math.random() * 3;
+  }
 
   return {
     id: `TY2025-${String(id).padStart(2, '0')}`,
@@ -122,6 +134,10 @@ const DEFAULT_AUTO: Record<AutoKey, boolean> = {
   frictionCoefficient: true,
   subtropicalHighStrength: true,
   subtropicalHighDirection: true,
+  verticalWindShear: true,
+  oceanHeatContent: true,
+  midLevelHumidity: true,
+  stormSize: true,
 };
 
 export const useTyphoonStore = create<TyphoonStore>((set, get) => {
@@ -145,7 +161,7 @@ export const useTyphoonStore = create<TyphoonStore>((set, get) => {
     historicalTyphoons: BUILTIN_HISTORICAL_TYPHOONS,
 
     init: () => {
-      const initial = createInitialStatus();
+      const initial = createInitialStatus(undefined, undefined, get().engineConfig);
       const sim = new TyphoonSimulation(get().engine, initial);
       set({ current: initial, fullHistory: [initial], history: [], simulation: sim, isFinished: false, replayIndex: -1, replayPlaying: false, autoOverrides: { ...DEFAULT_AUTO } });
     },
@@ -160,12 +176,40 @@ export const useTyphoonStore = create<TyphoonStore>((set, get) => {
       if (autoOverrides.seaSurfaceTemp) updates.seaSurfaceTemp = computeSeaTemp(centerLat, season);
       if (autoOverrides.landTemperature) updates.landTemperature = computeLandTemp(centerLat, season);
       if (autoOverrides.frictionCoefficient) updates.frictionCoefficient = computeFriction(isOverLand);
+      if (autoOverrides.verticalWindShear) updates.verticalWindShear = computeVerticalWindShear(centerLat, season);
+      if (autoOverrides.oceanHeatContent) updates.oceanHeatContent = computeOceanHeatContent(updates.seaSurfaceTemp ?? get().engineConfig.seaSurfaceTemp, season);
+      if (autoOverrides.midLevelHumidity) updates.midLevelHumidity = computeMidLevelHumidity(centerLat, season);
+      if (autoOverrides.stormSize) updates.stormSize = computeStormSize(centerLat, current.maxWindSpeed);
       if (Object.keys(updates).length > 0) {
         engine.updateConfig(updates);
         set({ engineConfig: engine.getConfig() });
       }
 
       const { next, trackPoint, isOver } = engine.step(current);
+
+      // 区域预警检测
+      const ui = useUIStore.getState();
+      const monitoredIds = ui.monitoredRegions;
+      if (monitoredIds.length > 0) {
+        const activeRegionIds = new Set(ui.alerts.map((a) => a.regionName));
+        PREDEFINED_REGIONS.forEach((region) => {
+          if (!monitoredIds.includes(region.id)) return;
+          const dist = distanceToRegion(next.centerLng, next.centerLat, region);
+          const levelInfo = getAlertLevel(dist);
+          if (!levelInfo) return;
+          const key = `${region.id}-${levelInfo.level}`;
+          if (activeRegionIds.has(region.name)) return;
+          ui.addAlert({
+            id: `alert-${Date.now()}-${key}`,
+            regionName: region.name,
+            typhoonName: next.name,
+            level: levelInfo.level,
+            distance: dist,
+            timestamp: Date.now(),
+          });
+        });
+      }
+
       const newHistory = trackPoint ? [...history, trackPoint] : history;
       let newFull = [...fullHistory, next];
 
@@ -207,7 +251,7 @@ export const useTyphoonStore = create<TyphoonStore>((set, get) => {
     },
 
     reset: () => {
-      const initial = createInitialStatus();
+      const initial = createInitialStatus(undefined, undefined, get().engineConfig);
       set({
         current: initial, fullHistory: [initial], history: [],
         isRunning: false, isFinished: false, speed: 1,
@@ -220,8 +264,8 @@ export const useTyphoonStore = create<TyphoonStore>((set, get) => {
       const s = get().typhoonSessions;
       if (s.length > 10) s.shift();
 
-      const initial = createInitialStatus(lng, lat);
-      const { engine: eng } = get();
+      const { engine: eng, engineConfig } = get();
+      const initial = createInitialStatus(lng, lat, engineConfig);
       const sim = new TyphoonSimulation(eng, initial);
       set({
         current: initial, fullHistory: [initial], history: [],
