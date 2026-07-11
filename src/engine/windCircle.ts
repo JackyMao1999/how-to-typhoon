@@ -37,15 +37,17 @@ function clamp(value: number, min: number, max: number): number {
 export function calculateDynamicBaseRadii(
   maxWindSpeed: number,
   radiusMaxWind: number,
+  stormSize: number = 0.5,
 ): Partial<Record<WindLevel, number>> {
   const radii: Partial<Record<WindLevel, number>> = {};
+  const sizeFactor = 0.65 + stormSize * 0.9;
 
   for (const level of [WindLevel.LV7, WindLevel.LV10, WindLevel.LV12]) {
     const [threshold] = WIND_LEVEL_SPEED_RANGES[level];
     if (maxWindSpeed < threshold) continue;
 
     const excess = maxWindSpeed - threshold;
-    const base = radiusMaxWind + excess * LEVEL_RADIUS_FACTOR[level];
+    const base = (radiusMaxWind + excess * LEVEL_RADIUS_FACTOR[level]) * sizeFactor;
     radii[level] = Math.round(clamp(base, LEVEL_MIN_RADIUS[level], LEVEL_MAX_RADIUS[level]));
   }
 

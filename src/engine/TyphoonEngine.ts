@@ -56,10 +56,11 @@ export class TyphoonEngine {
       this.config
     );
 
+    const sizeDrift = (this.config.stormSize - 0.5) * 0.8;
     const nextRadiusMaxWind = Math.round(
-      Math.max(12, Math.min(this.config.extremeMode ? 95 : 80, status.radiusMaxWind + (newSpeed - status.movingSpeed) * 0.2 + (maxWindSpeed - status.maxWindSpeed) * 0.35))
+      Math.max(10, Math.min(this.config.extremeMode ? 105 : 90, status.radiusMaxWind + sizeDrift + (newSpeed - status.movingSpeed) * 0.2 + (maxWindSpeed - status.maxWindSpeed) * 0.35))
     );
-    const dynamicBaseRadii = calculateDynamicBaseRadii(maxWindSpeed, nextRadiusMaxWind);
+    const dynamicBaseRadii = calculateDynamicBaseRadii(maxWindSpeed, nextRadiusMaxWind, this.config.stormSize);
     const baseRadii = this.config.extremeMode
       ? Object.fromEntries(
         Object.entries(dynamicBaseRadii).map(([level, radius]) => [level, Math.round((radius ?? 0) * 1.15)])

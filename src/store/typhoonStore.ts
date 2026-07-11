@@ -8,6 +8,9 @@ import {
 import { DEFAULT_ENGINE_CONFIG, DEFAULT_BASE_RADII, EngineConfig } from '../types/engine';
 import { TyphoonEngine, TyphoonSimulation, computeSeaTemp, computeLandTemp, computeFriction, determineLifeStage } from '../engine';
 import { Season, SEASON_OFFSET } from '../types/engine';
+import { HistoricalTyphoon } from '../types/historicalTyphoon';
+import { BUILTIN_HISTORICAL_TYPHOONS } from '../data/historical/samples';
+import { historicalToStatuses, statusesToTrackPoints } from '../data/historical/convert';
 
 type AutoKey = 'seaSurfaceTemp' | 'landTemperature' | 'frictionCoefficient' | 'subtropicalHighStrength' | 'subtropicalHighDirection';
 
@@ -90,6 +93,7 @@ interface TyphoonStore {
   season: SeasonKey;
 
   typhoonSessions: TyphoonSession[];
+  historicalTyphoons: HistoricalTyphoon[];
 
   init: () => void;
   tick: () => void;
@@ -107,6 +111,8 @@ interface TyphoonStore {
   isAuto: (key: AutoKey) => boolean;
   saveCurrentSession: () => void;
   loadSession: (index: number) => void;
+  loadHistoricalTyphoon: (id: string) => void;
+  importHistoricalTyphoon: (data: HistoricalTyphoon) => void;
   setSeason: (season: SeasonKey) => void;
 }
 
@@ -136,6 +142,7 @@ export const useTyphoonStore = create<TyphoonStore>((set, get) => {
     autoOverrides: { ...DEFAULT_AUTO },
     season: 'summer',
     typhoonSessions: [],
+    historicalTyphoons: BUILTIN_HISTORICAL_TYPHOONS,
 
     init: () => {
       const initial = createInitialStatus();
@@ -299,6 +306,41 @@ export const useTyphoonStore = create<TyphoonStore>((set, get) => {
         replayPlaying: true,
         autoOverrides: { ...DEFAULT_AUTO },
       });
+    },
+
+    loadHistoricalTyphoon: (id: string) => {
+      const typhoon = get().historicalTyphoons.find((item) => item.id === id);
+      if (!typhoon) return;
+
+      const statuses = historicalToStatuses(typhoon);
+      if (statuses.length === 0) return;
+
+      const initial = statuses[0];
+      const sim = new TyphoonSimulation(get().engine, initial);
+      set({
+        current: initial,
+        fullHistory: statuses,
+        history: statusesToTrackPoints(statuses),
+        isRunning: false,
+        isFinished: true,
+        speed: 1,
+        simulation: sim,
+        replayIndex: 0,
+        replayPlaying: true,
+        autoOverrides: { ...DEFAULT_AUTO },
+      });
+    },
+
+    importHistoricalTyphoon: (data: HistoricalTyphoon) => {
+      const imported = {
+        ...data,
+        id: data.id || `custom-${Date.now()}`,
+        source: data.source || 'CUSTOM',
+      };
+      set((state) => ({
+        historicalTyphoons: [imported, ...state.historicalTyphoons.filter((item) => item.id !== imported.id)],
+      }));
+      get().loadHistoricalTyphoon(imported.id);
     },
 
     setSeason: (season: SeasonKey) => {

@@ -15,6 +15,10 @@ export interface EngineConfig {
   minLatitude: number;
   season: Season;
   extremeMode: boolean;
+  verticalWindShear: number;
+  oceanHeatContent: number;
+  midLevelHumidity: number;
+  stormSize: number;
 }
 
 export const DEFAULT_ENGINE_CONFIG: EngineConfig = {
@@ -30,6 +34,10 @@ export const DEFAULT_ENGINE_CONFIG: EngineConfig = {
   minLatitude: 5,
   season: 'summer',
   extremeMode: false,
+  verticalWindShear: 8,
+  oceanHeatContent: 0.6,
+  midLevelHumidity: 70,
+  stormSize: 0.5,
 };
 
 export interface PathSmoothOptions {

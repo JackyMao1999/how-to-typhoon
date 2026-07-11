@@ -6,6 +6,7 @@ import { ParticleSystem } from './ParticleSystem';
 import { EyeEffect } from './EyeEffect';
 import { WindCircleGlow } from './WindCircleGlow';
 import { WindField } from './WindField';
+import { CloudBand } from './CloudBand';
 import { wgs84ToGcj02 } from '../utils/coord';
 import { getEyeSpeedMul, getGlowSpeedMul, getTyphoonLevel } from '../engine';
 import { TYPHOON_LEVEL_CONFIG, TyphoonLevel } from '../types/typhoon';
@@ -15,19 +16,23 @@ export function RendererOverlay() {
   const { map, isLoaded } = useMap();
   const displayState = useDisplayState();
   const showParticles = useUIStore((s) => s.showParticles);
+  const showCloudBands = useUIStore((s) => s.showCloudBands);
   const showWindField = useUIStore((s) => s.showWindField);
 
   const particleRef = useRef<ParticleSystem | null>(null);
   const eyeRef = useRef<EyeEffect | null>(null);
   const glowRef = useRef<WindCircleGlow | null>(null);
   const windFieldRef = useRef<WindField | null>(null);
+  const cloudRef = useRef<CloudBand | null>(null);
 
   const stateRef = useRef(displayState);
   const particlesVisibleRef = useRef(showParticles);
+  const cloudVisibleRef = useRef(showCloudBands);
   const windFieldVisibleRef = useRef(showWindField);
 
   stateRef.current = displayState;
   particlesVisibleRef.current = showParticles;
+  cloudVisibleRef.current = showCloudBands;
   windFieldVisibleRef.current = showWindField;
 
   useEffect(() => {
@@ -46,6 +51,9 @@ export function RendererOverlay() {
 
     const eye = new EyeEffect(gl);
     eyeRef.current = eye;
+
+    const cloud = new CloudBand(gl);
+    cloudRef.current = cloud;
 
     const glow = new WindCircleGlow(gl);
     glowRef.current = glow;
@@ -113,6 +121,14 @@ export function RendererOverlay() {
         particles.draw([0, 0], 0.003, [pw, ph], 0.8, zoomScale, [0.8, 0.1, 0.1]);
 
         if (onScreen) {
+          const windRadii = s.windCircles.map((wc) => Math.max(wc.ne, wc.nw, wc.se, wc.sw)) as [number, number, number];
+          const cloudRadius = Math.max(120, ...windRadii.filter((r) => Number.isFinite(r)));
+
+          if (cloudVisibleRef.current) {
+            cloud.update(delta);
+            cloud.draw(offsetNDC, ndcScale, speed, cloudRadius);
+          }
+
           if (particlesVisibleRef.current) {
             particles.update(now);
             particles.draw(offsetNDC, ndcScale, [pw, ph], 0.8, zoomScale, particleColor);
@@ -121,7 +137,6 @@ export function RendererOverlay() {
           eye.update(delta);
           eye.draw(offsetNDC, ndcScale, eyeSpeedMul, eyeColor);
 
-          const windRadii = s.windCircles.map((wc) => Math.max(wc.ne, wc.nw, wc.se, wc.sw)) as [number, number, number];
           glow.update(delta);
           glow.draw(offsetNDC, ndcScale, windRadii, glowSpeedMul);
 
@@ -141,6 +156,7 @@ export function RendererOverlay() {
       eyeRef.current?.dispose();
       glowRef.current?.dispose();
       windFieldRef.current?.dispose();
+      cloudRef.current?.dispose();
     };
   }, [isLoaded, map]);
 

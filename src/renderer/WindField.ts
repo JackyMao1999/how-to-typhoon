@@ -3,25 +3,31 @@ import { computeWindAtPoint } from '../engine/windField';
 import { gcj02ToWgs84, wgs84ToGcj02 } from '../utils/coord';
 
 const VERT_SRC = `attribute vec2 aPosition;
+attribute vec3 aColor;
 attribute float aAlpha;
 uniform vec2 uOffsetNDC;
 uniform float uScale;
 uniform vec2 uRes;
+varying vec3 vColor;
+varying float vAlpha;
 void main(){
   vec2 p=aPosition*uScale+uOffsetNDC;
   gl_Position=vec4(p,0.,1.);
-  gl_PointSize=2.5;
+  gl_PointSize=2.0+aAlpha*3.5;
+  vColor=aColor;
+  vAlpha=aAlpha;
 }`;
 
 const FRAG_SRC = `precision mediump float;
-uniform vec3 uColor;
 uniform float uAlpha;
+varying vec3 vColor;
+varying float vAlpha;
 void main(){
   vec2 c=gl_PointCoord-vec2(.5);
   float d=length(c);
   if(d>.5)discard;
-  float a=smoothstep(.5,.0,d)*uAlpha;
-  gl_FragColor=vec4(uColor,a);
+  float a=smoothstep(.5,.0,d)*uAlpha*vAlpha;
+  gl_FragColor=vec4(vColor,a);
 }`;
 
 interface WindParticle {
@@ -45,13 +51,16 @@ export class WindField {
   private gl: WebGLRenderingContext;
   private program: WebGLProgram;
   private buf: WebGLBuffer;
+  private colorBuf: WebGLBuffer;
+  private alphaBuf: WebGLBuffer;
   private particles: WindParticle[] = [];
   private count = 1200;
   private locA: number;
+  private locColorA: number;
+  private locAlphaA: number;
   private locOffset: WebGLUniformLocation;
   private locScale: WebGLUniformLocation;
   private locRes: WebGLUniformLocation;
-  private locColor: WebGLUniformLocation;
   private locAlpha: WebGLUniformLocation;
 
   constructor(gl: WebGLRenderingContext) {
@@ -64,11 +73,14 @@ export class WindField {
     gl.linkProgram(prog);
     this.program = prog;
     this.buf = gl.createBuffer()!;
+    this.colorBuf = gl.createBuffer()!;
+    this.alphaBuf = gl.createBuffer()!;
     this.locA = gl.getAttribLocation(prog, 'aPosition');
+    this.locColorA = gl.getAttribLocation(prog, 'aColor');
+    this.locAlphaA = gl.getAttribLocation(prog, 'aAlpha');
     this.locOffset = gl.getUniformLocation(prog, 'uOffsetNDC')!;
     this.locScale = gl.getUniformLocation(prog, 'uScale')!;
     this.locRes = gl.getUniformLocation(prog, 'uRes')!;
-    this.locColor = gl.getUniformLocation(prog, 'uColor')!;
     this.locAlpha = gl.getUniformLocation(prog, 'uAlpha')!;
   }
 
@@ -86,6 +98,10 @@ export class WindField {
     }
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buf);
     this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(this.count * 2), this.gl.DYNAMIC_DRAW);
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.colorBuf);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(this.count * 3), this.gl.DYNAMIC_DRAW);
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.alphaBuf);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(this.count), this.gl.DYNAMIC_DRAW);
   }
 
   private createParticle(): WindParticle {
@@ -157,11 +173,16 @@ export class WindField {
       colors[i * 3] = col[0];
       colors[i * 3 + 1] = col[1];
       colors[i * 3 + 2] = col[2];
-      alphas[i] = Math.min(1, 1 - p.age / p.lifetime) * 0.7;
+      const lifeAlpha = Math.min(1, 1 - p.age / p.lifetime);
+      alphas[i] = lifeAlpha * Math.min(1, 0.25 + wind.speed / 45);
     }
 
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.buf);
     this.gl.bufferSubData(this.gl.ARRAY_BUFFER, 0, data);
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.colorBuf);
+    this.gl.bufferSubData(this.gl.ARRAY_BUFFER, 0, colors);
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.alphaBuf);
+    this.gl.bufferSubData(this.gl.ARRAY_BUFFER, 0, alphas);
   }
 
   draw(
@@ -176,11 +197,19 @@ export class WindField {
     gl.bindBuffer(gl.ARRAY_BUFFER, this.buf);
     gl.enableVertexAttribArray(this.locA);
     gl.vertexAttribPointer(this.locA, 2, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuf);
+    gl.enableVertexAttribArray(this.locColorA);
+    gl.vertexAttribPointer(this.locColorA, 3, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.alphaBuf);
+    gl.enableVertexAttribArray(this.locAlphaA);
+    gl.vertexAttribPointer(this.locAlphaA, 1, gl.FLOAT, false, 0, 0);
+
     gl.uniform2f(this.locOffset, offsetNDC[0], offsetNDC[1]);
     gl.uniform1f(this.locScale, ndcScale);
     gl.uniform2f(this.locRes, res[0], res[1]);
     gl.uniform1f(this.locAlpha, alpha);
-    gl.uniform3f(this.locColor, 0.7, 0.8, 0.3);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.drawArrays(gl.POINTS, 0, this.count);
@@ -188,6 +217,8 @@ export class WindField {
 
   dispose(): void {
     this.gl.deleteBuffer(this.buf);
+    this.gl.deleteBuffer(this.colorBuf);
+    this.gl.deleteBuffer(this.alphaBuf);
     this.gl.deleteProgram(this.program);
   }
 }

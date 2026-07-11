@@ -28,6 +28,26 @@ const PARAM_INFO: Record<string, { title: string; desc: string; effect: string }
     desc: '模拟地面对台风的摩擦衰减。自动模式下：海上=0.1, 陆地=0.7。系数越大，登陆后风速衰减越快。',
     effect: '海上摩擦≈0.1-0.2, 陆地上≈0.5-0.8',
   },
+  verticalWindShear: {
+    title: '垂直风切变',
+    desc: '不同高度风向风速差异。风切变越大，越容易破坏台风暖心和眼墙结构。',
+    effect: '<10m/s 有利增强，>20m/s 明显抑制',
+  },
+  oceanHeatContent: {
+    title: '海洋热含量',
+    desc: '暖水层越深，台风越不容易被自身冷尾流削弱，越可能快速增强。',
+    effect: '高热含量提高最大潜势强度',
+  },
+  midLevelHumidity: {
+    title: '中层湿度',
+    desc: '中层空气越湿，越有利于深对流维持；干空气卷入会削弱台风。',
+    effect: '<55% 会抑制增强并促进衰减',
+  },
+  stormSize: {
+    title: '台风尺度',
+    desc: '大尺度台风风圈更宽、惯性更强；小尺度台风更紧凑。',
+    effect: '影响最大风半径和各级风圈范围',
+  },
 };
 
 type AutoKey = 'seaSurfaceTemp' | 'landTemperature' | 'frictionCoefficient' | 'subtropicalHighStrength' | 'subtropicalHighDirection';
@@ -36,6 +56,7 @@ const SEASONS = ['spring', 'summer', 'autumn', 'winter'] as const;
 
 const TOGGLE_IDS: Record<string, string> = {
   '粒子系统': 'ctrl-toggle-particles',
+  '云图': 'ctrl-toggle-clouds',
   '风场': 'ctrl-toggle-windfield',
   '风圈': 'ctrl-toggle-windcircle',
   '路径预测': 'ctrl-toggle-prediction',
@@ -51,11 +72,13 @@ export function ControlPanel() {
   const setSeason = useTyphoonStore((s) => s.setSeason);
 
   const showParticles = useUIStore((s) => s.showParticles);
+  const showCloudBands = useUIStore((s) => s.showCloudBands);
   const showWindCircles = useUIStore((s) => s.showWindCircles);
   const showWindField = useUIStore((s) => s.showWindField);
   const showPath = useUIStore((s) => s.showPath);
   const showPrediction = useUIStore((s) => s.showPrediction);
   const toggleParticles = useUIStore((s) => s.toggleParticles);
+  const toggleCloudBands = useUIStore((s) => s.toggleCloudBands);
   const toggleWindCircles = useUIStore((s) => s.toggleWindCircles);
   const toggleWindField = useUIStore((s) => s.toggleWindField);
   const togglePath = useUIStore((s) => s.togglePath);
@@ -69,6 +92,13 @@ export function ControlPanel() {
     { key: 'seaSurfaceTemp', label: '海面温度', value: engineConfig.seaSurfaceTemp, min: 20, max: 32, step: 0.5, suffix: '°C', autoKey: 'seaSurfaceTemp' },
     { key: 'landTemperature', label: '陆地温度', value: engineConfig.landTemperature, min: 18, max: 34, step: 0.5, suffix: '°C', autoKey: 'landTemperature' },
     { key: 'frictionCoefficient', label: '摩擦系数', value: engineConfig.frictionCoefficient, min: 0, max: 1, step: 0.05, autoKey: 'frictionCoefficient' },
+  ];
+
+  const advancedSliders: { key: string; label: string; value: number; min: number; max: number; step: number; suffix?: string }[] = [
+    { key: 'verticalWindShear', label: '风切变', value: engineConfig.verticalWindShear, min: 0, max: 40, step: 1, suffix: 'm/s' },
+    { key: 'oceanHeatContent', label: '热含量', value: engineConfig.oceanHeatContent, min: 0, max: 1, step: 0.05 },
+    { key: 'midLevelHumidity', label: '湿度', value: engineConfig.midLevelHumidity, min: 30, max: 95, step: 1, suffix: '%' },
+    { key: 'stormSize', label: '尺度', value: engineConfig.stormSize, min: 0, max: 1, step: 0.05 },
   ];
 
   return (
@@ -93,6 +123,20 @@ export function ControlPanel() {
                   autoOn={autoOverrides[autoKey]} info={PARAM_INFO[key]}
                   onChange={(v) => { if (autoOverrides[autoKey]) toggleAutoOverride(autoKey); updateEngineConfig({ [key]: v } as any); }}
                   onToggleAuto={() => toggleAutoOverride(autoKey)} />
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-gray-700/30">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="panel-title font-sans">Intensity Factors</h3>
+              <span className="text-[10px] text-gray-500">高级情景</span>
+            </div>
+            <div className="space-y-2.5">
+              {advancedSliders.map(({ key, label, value, min, max, step, suffix }) => (
+                <SimpleSliderRow key={key} id={`ctrl-slider-${key}`} label={label} value={value} min={min} max={max} step={step} suffix={suffix}
+                  info={PARAM_INFO[key]}
+                  onChange={(v) => updateEngineConfig({ [key]: v } as any)} />
               ))}
             </div>
           </div>
@@ -136,6 +180,7 @@ export function ControlPanel() {
             <h3 className="panel-title mb-2 font-sans">Layers</h3>
             <div className="grid grid-cols-2 gap-2">
               <Toggle id={TOGGLE_IDS['粒子系统']} label="粒子系统" checked={showParticles} onChange={toggleParticles} />
+              <Toggle id={TOGGLE_IDS['云图']} label="云图" checked={showCloudBands} onChange={toggleCloudBands} />
               <Toggle id={TOGGLE_IDS['风场']} label="风场" checked={showWindField} onChange={toggleWindField} />
               <Toggle id={TOGGLE_IDS['风圈']} label="风圈" checked={showWindCircles} onChange={toggleWindCircles} />
               <Toggle id={TOGGLE_IDS['路径预测']} label="路径预测" checked={showPrediction} onChange={togglePrediction} />
@@ -183,6 +228,26 @@ function SliderRow({ id, label, value, min, max, step, suffix = '', autoOn, info
         }`}>
         {autoOn ? 'A' : 'M'}
       </button>
+    </div>
+  );
+}
+
+function SimpleSliderRow({ id, label, value, min, max, step, suffix = '', info, onChange }: {
+  id: string; label: string; value: number; min: number; max: number; step: number; suffix?: string;
+  info: { title: string; desc: string; effect: string };
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-gray-400 text-xs w-auto min-w-[58px] shrink-0 flex items-center">
+        {label}<InfoIcon info={info} />
+      </span>
+      <input id={id} type="range" min={min} max={max} step={step} value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        className="flex-1 h-1.5 accent-typhoon-lv7 min-w-0 rounded-full" />
+      <span className="text-gray-200 text-xs w-12 text-right shrink-0 font-mono">
+        {step >= 1 ? value.toFixed(0) : value.toFixed(2)}{suffix}
+      </span>
     </div>
   );
 }
