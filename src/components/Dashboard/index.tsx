@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useDisplayState } from '../../store/typhoonStore';
-import { getWindLevelColor, WindLevel, LIFE_STAGE_LABELS } from '../../types/typhoon';
+import { getWindLevelColor, WindLevel, LIFE_STAGE_LABELS, EffectType } from '../../types/typhoon';
 import { getLevelHexColor, getLevelName, getWindForce } from '../../engine';
 
 export function Dashboard() {
@@ -52,6 +52,46 @@ export function Dashboard() {
         <Metric id="info-direction" label="移动方向" value={current.movingDirection.toFixed(0)} unit="°" />
         <Metric id="info-position" label="中心位置" value={`${current.centerLng.toFixed(1)} / ${current.centerLat.toFixed(1)}`} unit="°" />
       </div>
+
+      {current.landfallPoint && (
+        <div className="mb-4 rounded-lg border border-red-500/30 bg-red-950/15 p-2.5 text-xs">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+            <span className="font-bold text-red-300">登陆</span>
+          </div>
+          <div className="text-gray-400 ml-4">
+            {current.landfallPoint.lng.toFixed(2)}°E, {current.landfallPoint.lat.toFixed(2)}°N
+          </div>
+        </div>
+      )}
+
+      {current.activeEffects && current.activeEffects.length > 0 && (
+        <div className="mb-4">
+          <div className="panel-title mb-2">Active Factors</div>
+          <div className="space-y-1.5">
+            {current.activeEffects.map((ef, i) => {
+              const colors = {
+                intensify: { border: 'border-green-500/25', bg: 'bg-green-950/10', text: 'text-green-300', dot: 'bg-green-400', icon: '🔼' },
+                weaken: { border: 'border-red-500/25', bg: 'bg-red-950/10', text: 'text-red-300', dot: 'bg-red-400', icon: '🔽' },
+                steer: { border: 'border-blue-500/25', bg: 'bg-blue-950/10', text: 'text-blue-300', dot: 'bg-blue-400', icon: '➡️' },
+                info: { border: 'border-yellow-500/25', bg: 'bg-yellow-950/10', text: 'text-yellow-300', dot: 'bg-yellow-400', icon: '⚡' },
+              };
+              const c = colors[ef.type] || colors.info;
+              return (
+                <div key={i} className={`rounded border ${c.border} ${c.bg} overflow-hidden`}>
+                  <div className="flex items-center gap-2 px-2.5 py-2 text-[11px]">
+                    <span className={`w-1.5 h-1.5 rounded-full ${c.dot} shrink-0`} />
+                    <span className={`font-bold ${c.text}`}>{c.icon} {ef.name}</span>
+                  </div>
+                  <div className="px-2.5 pb-2 text-[10px] text-gray-400 leading-relaxed">
+                    {ef.desc}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="pt-3 border-t border-gray-700/30">
         <div className="flex items-center justify-between mb-2">

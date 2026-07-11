@@ -16,6 +16,8 @@ interface UIStore {
   showWindCircles: boolean;
   showPath: boolean;
   showPrediction: boolean;
+  showEnsemblePath: boolean;
+  showLandfall: boolean;
   showCoastline: boolean;
   detailPanelOpen: boolean;
 
@@ -27,6 +29,8 @@ interface UIStore {
   toggleWindCircles: () => void;
   togglePath: () => void;
   togglePrediction: () => void;
+  toggleEnsemblePath: () => void;
+  toggleLandfall: () => void;
   toggleCoastline: () => void;
   setDetailPanelOpen: (open: boolean) => void;
 
@@ -42,6 +46,8 @@ export const useUIStore = create<UIStore>((set, get) => ({
   showWindCircles: true,
   showPath: true,
   showPrediction: true,
+  showEnsemblePath: true,
+  showLandfall: true,
   showCoastline: true,
   detailPanelOpen: false,
 
@@ -53,6 +59,8 @@ export const useUIStore = create<UIStore>((set, get) => ({
   toggleWindCircles: () => set((s) => ({ showWindCircles: !s.showWindCircles })),
   togglePath: () => set((s) => ({ showPath: !s.showPath })),
   togglePrediction: () => set((s) => ({ showPrediction: !s.showPrediction })),
+  toggleEnsemblePath: () => set((s) => ({ showEnsemblePath: !s.showEnsemblePath })),
+  toggleLandfall: () => set((s) => ({ showLandfall: !s.showLandfall })),
   toggleCoastline: () => set((s) => ({ showCoastline: !s.showCoastline })),
   setDetailPanelOpen: (open) => set({ detailPanelOpen: open }),
 

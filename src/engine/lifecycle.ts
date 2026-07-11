@@ -11,7 +11,24 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-/** 强度演化：forming/developing 阶段逐步提升风速 */
+/** MPI 最大潜势强度（简化 Emanuel 公式） */
+function computeMPI(sst: number, shear: number, lat: number, ohc: number): number {
+  const base = 18 + (sst - 22) * 3.2;
+  const shearPenalty = Math.max(0, shear - 6) * 0.9;
+  const latPenalty = Math.max(0, Math.abs(lat) - 10) * 0.25;
+  const ohcBonus = (ohc - 0.3) * 12;
+  return clamp(base + ohcBonus - shearPenalty - latPenalty, 15, 85);
+}
+
+/** 快速增强检测 */
+function checkRI(
+  sst: number, shear: number, humidity: number, ohc: number, lifeStage: LifeStage,
+): boolean {
+  if (lifeStage !== 'developing' && lifeStage !== 'forming') return false;
+  return sst > 28 && shear < 10 && humidity > 72 && ohc > 0.6;
+}
+
+/** 强度演化 */
 export function applyIntensityEvolution(
   status: TyphoonStatus,
   config: EngineConfig,
@@ -24,19 +41,24 @@ export function applyIntensityEvolution(
   let pressure = status.pressure;
 
   if (lifeStage === 'forming' || lifeStage === 'developing' || (extremeMode && lifeStage === 'mature')) {
-    const shearPenalty = Math.max(0, verticalWindShear - 10) * 0.9;
-    const humidityFactor = clamp((midLevelHumidity - 45) / 35, 0, 1.2);
-    const heatBonus = oceanHeatContent * 10;
-    const humidityBonus = (humidityFactor - 0.7) * 8;
-    const normalPotential = 20 + Math.max(0, seaSurfaceTemp - 26) * 3 + Math.max(0, 30 - absLat) * 0.25 + heatBonus + humidityBonus - shearPenalty;
-    const extremePotential = clamp(
-      68 + Math.max(0, seaSurfaceTemp - 28) * 5 + Math.max(0, 22 - absLat) * 0.6 + oceanHeatContent * 8 + humidityBonus - shearPenalty * 0.7,
-      62,
-      78,
+    const mpi = computeMPI(seaSurfaceTemp, verticalWindShear, absLat, oceanHeatContent);
+    const extremeMPI = clamp(mpi * 1.2, 62, 78);
+    const target = Math.max(speed, extremeMode ? extremeMPI : mpi);
+
+    let rate = (extremeMode ? EXTREME_INTENSIFY_RATE : INTENSIFY_RATE);
+
+    // 快速增强
+    if (checkRI(seaSurfaceTemp, verticalWindShear, midLevelHumidity, oceanHeatContent, lifeStage)) {
+      rate *= 2.5 + Math.random() * 4;
+    }
+
+    const environmentRate = clamp(
+      0.45 + oceanHeatContent * 0.55 + clamp((midLevelHumidity - 45) / 35, 0, 1.2) * 0.25 - Math.max(0, verticalWindShear - 12) * 0.035,
+      0.08, 1.35,
     );
-    const target = Math.max(0, extremeMode ? extremePotential : normalPotential);
-    const environmentRate = clamp(0.45 + oceanHeatContent * 0.55 + humidityFactor * 0.25 - Math.max(0, verticalWindShear - 12) * 0.035, 0.08, 1.35);
-    const rate = (extremeMode ? EXTREME_INTENSIFY_RATE : INTENSIFY_RATE) * environmentRate;
+    rate *= environmentRate;
+    rate = clamp(rate, 0.02, 0.35);
+
     speed += (target - speed) * rate;
     speed = Math.round(speed * 10) / 10;
     pressure = Math.round(pressure - (speed - status.maxWindSpeed) * (extremeMode ? 1.8 : 1.2));
@@ -45,20 +67,19 @@ export function applyIntensityEvolution(
   return { maxWindSpeed: speed, pressure };
 }
 
+/** 生命周期判断 */
 export function determineLifeStage(
   status: TyphoonStatus,
   config: EngineConfig
 ): LifeStage {
   const { maxWindSpeed, pressure, isOverLand, centerLat, maxSpeedReached } = status;
-  const { seaSurfaceTemp, landTemperature, maxLatitude, minLatitude } = config;
+  const { maxLatitude, minLatitude } = config;
 
   const absLat = Math.abs(centerLat);
 
   if (maxWindSpeed < STOP_WIND_SPEED) return 'dissipated';
-
   if (absLat < minLatitude) return 'decaying';
   if (absLat > maxLatitude) return 'decaying';
-
   if (isOverLand) return 'decaying';
   if (maxWindSpeed < 17.2) {
     if (maxSpeedReached >= 17.2) return 'decaying';
@@ -70,6 +91,7 @@ export function determineLifeStage(
   return 'developing';
 }
 
+/** 衰减 */
 export function applyDecay(
   status: TyphoonStatus,
   config: EngineConfig
@@ -113,4 +135,11 @@ export function applyDecay(
     pressure: newPressure,
     windSpeedMultiplier: multiplier,
   };
+}
+
+/** 温带气旋转化检测 */
+export function checkExtratropicalTransition(
+  lat: number, lifeStage: LifeStage, maxWindSpeed: number,
+): boolean {
+  return Math.abs(lat) > 35 && lifeStage === 'decaying' && maxWindSpeed >= 13.9;
 }

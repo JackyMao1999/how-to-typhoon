@@ -6,7 +6,7 @@ import {
   LifeStage,
 } from '../types/typhoon';
 import { DEFAULT_ENGINE_CONFIG, DEFAULT_BASE_RADII, EngineConfig } from '../types/engine';
-import { TyphoonEngine, TyphoonSimulation, computeSeaTemp, computeLandTemp, computeFriction, computeVerticalWindShear, computeOceanHeatContent, computeMidLevelHumidity, computeStormSize, computeFormationPotential, determineLifeStage } from '../engine';
+import { TyphoonEngine, TyphoonSimulation, computeSeaTemp, computeLandTemp, computeFriction, computeVerticalWindShear, computeOceanHeatContent, computeMidLevelHumidity, computeStormSize, computeFormationPotential, determineLifeStage, isOverLand } from '../engine';
 import { Season, SEASON_OFFSET } from '../types/engine';
 import { HistoricalTyphoon } from '../types/historicalTyphoon';
 import { BUILTIN_HISTORICAL_TYPHOONS } from '../data/historical/samples';
@@ -75,6 +75,7 @@ function createInitialStatus(lng?: number, lat?: number, config?: EngineConfig):
     lifeStage: 'forming',
     isFinished: false,
     maxSpeedReached: Math.round(speed * 10) / 10,
+    activeEffects: [],
   };
 }
 
@@ -114,6 +115,9 @@ interface TyphoonStore {
   setSpeed: (speed: number) => void;
   reset: () => void;
   spawnAt: (lng: number, lat: number) => void;
+  spawnRandom: () => void;
+  autoSpawn: boolean;
+  toggleAutoSpawn: () => void;
   updateEngineConfig: (partial: Partial<EngineConfig>) => void;
   modifyTyphoon: (partial: Partial<TyphoonStatus>) => void;
   setReplayIndex: (index: number) => void;
@@ -150,6 +154,7 @@ export const useTyphoonStore = create<TyphoonStore>((set, get) => {
     isRunning: false,
     isFinished: false,
     speed: 1,
+    autoSpawn: false,
     replayIndex: -1,
     replayPlaying: false,
     engine,
@@ -274,6 +279,17 @@ export const useTyphoonStore = create<TyphoonStore>((set, get) => {
         autoOverrides: { ...DEFAULT_AUTO },
       });
     },
+
+    spawnRandom: () => {
+      let lng: number, lat: number;
+      do {
+        lng = 120 + Math.random() * 40;
+        lat = 5 + Math.random() * 20;
+      } while (isOverLand(lng, lat));
+      get().spawnAt(lng, lat);
+    },
+
+    toggleAutoSpawn: () => set((s) => ({ autoSpawn: !s.autoSpawn })),
 
     updateEngineConfig: (partial: Partial<EngineConfig>) => {
       const { engine } = get();

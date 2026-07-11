@@ -97,3 +97,38 @@ export function setPredictionVisible(visible: boolean): void {
   if (!currentMap) return;
   if (predPolyline) { visible ? predPolyline.addTo(currentMap) : currentMap.removeLayer(predPolyline); }
 }
+
+let ensembleCone: any = null;
+let ensembleMembers: any[] = [];
+
+export function updateEnsembleLayer(map: any, coneCoords: [number, number][]): void {
+  currentMap = map;
+
+  if (ensembleCone) { map.removeLayer(ensembleCone); ensembleCone = null; }
+  for (const m of ensembleMembers) { map.removeLayer(m); }
+  ensembleMembers = [];
+
+  if (coneCoords.length < 3) return;
+
+  const latlngs = coneCoords.map(([lng, lat]) => [lat, lng] as [number, number]);
+
+  ensembleCone = L.polygon(latlngs, {
+    color: '#FF8844',
+    weight: 1,
+    opacity: 0.15,
+    fillColor: '#FF8844',
+    fillOpacity: 0.03,
+    interactive: false,
+  }).addTo(map);
+}
+
+export function setEnsembleVisible(visible: boolean): void {
+  if (!currentMap) return;
+  if (ensembleCone) { visible ? ensembleCone.addTo(currentMap) : currentMap.removeLayer(ensembleCone); }
+}
+
+export function removeEnsembleLayer(map: any): void {
+  if (ensembleCone) { map.removeLayer(ensembleCone); ensembleCone = null; }
+  for (const m of ensembleMembers) { map.removeLayer(m); }
+  ensembleMembers = [];
+}

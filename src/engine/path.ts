@@ -169,6 +169,61 @@ export function predictPath(
   return points;
 }
 
+/**
+ * 集合预报路径
+ * 在副高方向、副高强度、移动速度上叠加随机扰动
+ * 生成 ensembleSize 条不同路径用于显示概率范围
+ */
+export function predictPathEnsemble(
+  status: TyphoonStatus,
+  config: EngineConfig,
+  steps: number,
+  ensembleSize: number,
+): [number, number][] {
+  const allPaths: [number, number][][] = [];
+  for (let e = 0; e < ensembleSize; e++) {
+    const perturbed: EngineConfig = {
+      ...config,
+      subtropicalHighDirection: config.subtropicalHighDirection + (Math.random() - 0.5) * 40,
+      subtropicalHighStrength: Math.max(0, config.subtropicalHighStrength + (Math.random() - 0.5) * 6),
+    };
+    const base = status.movingSpeed;
+    const perturbedSpeed = Math.max(5, base + (Math.random() - 0.5) * base * 0.6);
+    const points: [number, number][] = [[status.centerLng, status.centerLat]];
+    let tempLng = status.centerLng;
+    let tempLat = status.centerLat;
+    let tempSpeed = perturbedSpeed;
+    for (let i = 0; i < steps; i++) {
+      const { direction: newDir, speed: newSpeed } = applySteeringFlow(tempLat, tempSpeed, perturbed);
+      const finalDir = applyCoriolisDeflection(newDir, newSpeed, tempLat, perturbed);
+      const [nextLng, nextLat] = advancePosition(tempLng, tempLat, finalDir, newSpeed, config.timeStep);
+      tempLng = nextLng;
+      tempLat = nextLat;
+      tempSpeed = newSpeed;
+      points.push([tempLng, tempLat]);
+    }
+    allPaths.push(points);
+  }
+
+  const memberCount = allPaths.length;
+  const stepCount = allPaths[0].length;
+
+  const coneLeft: [number, number][] = [];
+  const coneRight: [number, number][] = [];
+
+  for (let s = 0; s < stepCount; s++) {
+    const lngs = allPaths.map((p) => p[s][0]).sort((a, b) => a - b);
+    const lats = allPaths.map((p) => p[s][1]).sort((a, b) => a - b);
+    const leftIdx = Math.floor(memberCount * 0.2);
+    const rightIdx = Math.ceil(memberCount * 0.8) - 1;
+    coneLeft.push([lngs[leftIdx], lats[leftIdx]]);
+    coneRight.push([lngs[rightIdx], lats[rightIdx]]);
+  }
+
+  const cone: [number, number][] = [...coneLeft, ...coneRight.reverse(), coneLeft[0]];
+  return cone;
+}
+
 export function advancePosition(
   currentLng: number,
   currentLat: number,

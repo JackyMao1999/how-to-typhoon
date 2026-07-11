@@ -14,10 +14,11 @@ import { useMapClick } from './hooks/useMapClick';
 import { SeaTempTooltip } from './components/SeaTempTooltip';
 import { AlertToastContainer } from './components/AlertToast';
 import { updateWindCircleLayers, setWindCirclesVisible } from './map/layers/windCircleLayer';
-import { updatePathLayer, updatePredictionLayer, setPathVisible, setPredictionVisible } from './map/layers/pathLayer';
+import { updatePathLayer, updatePredictionLayer, setPathVisible, setPredictionVisible, updateEnsembleLayer, setEnsembleVisible } from './map/layers/pathLayer';
 import { updateRegionLayers } from './map/layers/regionLayer';
 import { updateCoastlineLayer, setCoastlineVisible } from './map/layers/coastlineLayer';
-import { predictPath } from './engine';
+import { updateLandfallLayer, setLandfallVisible } from './map/layers/landfallLayer';
+import { predictPath, predictPathEnsemble } from './engine';
 import { getLevelHexColor, getTyphoonLevel } from './engine';
 import { haversineDistance } from './utils/geo';
 
@@ -43,6 +44,9 @@ function MapLayers() {
   const showPath = useUIStore((s) => s.showPath);
   const showPrediction = useUIStore((s) => s.showPrediction);
   const showCoastline = useUIStore((s) => s.showCoastline);
+  const showEnsemblePath = useUIStore((s) => s.showEnsemblePath);
+  const showLandfall = useUIStore((s) => s.showLandfall);
+  const toggleEnsemblePath = useUIStore((s) => s.toggleEnsemblePath);
   const replayIndex = useTyphoonStore((s) => s.replayIndex);
   const [hoveredNode, setHoveredNode] = useState<{ x: number; y: number; text: string; color: string; time: string } | null>(null);
   const monitoredRegions = useUIStore((s) => s.monitoredRegions);
@@ -65,10 +69,26 @@ function MapLayers() {
     updatePredictionLayer(map, predCoords.slice(0, 13));
   }, [map, isLoaded, predCoords, displayState]);
 
+  const ensembleCone = showEnsemblePath && predCoords.length > 2
+    ? predictPathEnsemble(displayState, engineConfig, 48, 30)
+    : [];
+
+  useEffect(() => {
+    if (!map || !isLoaded || !showEnsemblePath || ensembleCone.length < 3) return;
+    updateEnsembleLayer(map, ensembleCone);
+  }, [map, isLoaded, showEnsemblePath, ensembleCone]);
+
   useEffect(() => { setWindCirclesVisible(showWindCircles); }, [showWindCircles]);
   useEffect(() => { setPathVisible(showPath); }, [showPath]);
   useEffect(() => { setPredictionVisible(showPrediction); }, [showPrediction]);
   useEffect(() => { setCoastlineVisible(showCoastline); }, [showCoastline]);
+  useEffect(() => { setEnsembleVisible(showEnsemblePath); }, [showEnsemblePath]);
+  useEffect(() => { setLandfallVisible(showLandfall); }, [showLandfall]);
+
+  useEffect(() => {
+    if (!map || !isLoaded) return;
+    updateLandfallLayer(map, displayState.landfallPoint);
+  }, [map, isLoaded, displayState]);
 
   useEffect(() => {
     if (!map || !isLoaded || !showCoastline) return;

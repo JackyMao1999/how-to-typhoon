@@ -49,6 +49,20 @@ export const LIFE_STAGE_LABELS: Record<LifeStage, string> = {
   dissipated: '消散期',
 };
 
+export interface LandfallPoint {
+  lng: number;
+  lat: number;
+  timestamp: number;
+}
+
+export type EffectType = 'intensify' | 'weaken' | 'steer' | 'info';
+
+export interface TyphoonEffect {
+  name: string;
+  type: EffectType;
+  desc: string;
+}
+
 export interface TyphoonStatus {
   id: string;
   name: string;
@@ -63,6 +77,8 @@ export interface TyphoonStatus {
   movingDirection: number;
   radiusMaxWind: number;
   isOverLand: boolean;
+  landfallPoint?: LandfallPoint;
+  activeEffects: TyphoonEffect[];
   lifeStage: LifeStage;
   isFinished: boolean;
   maxSpeedReached: number;

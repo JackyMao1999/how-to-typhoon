@@ -1,9 +1,10 @@
 export { TyphoonEngine } from './TyphoonEngine';
 export { TyphoonSimulation } from './TyphoonSimulation';
 export { calculateAsymmetricRadii } from './windCircle';
-export { smoothPath, applySteeringFlow, applyCoriolisDeflection, advancePosition, predictPath } from './path';
-export { determineLifeStage, applyDecay, applyIntensityEvolution } from './lifecycle';
+export { smoothPath, applySteeringFlow, applyCoriolisDeflection, advancePosition, predictPath, predictPathEnsemble } from './path';
+export { determineLifeStage, applyDecay, applyIntensityEvolution, checkExtratropicalTransition } from './lifecycle';
 export { isOverLand } from './landmass';
 export { computeSeaTemp, computeLandTemp, computeFriction, computeVerticalWindShear, computeOceanHeatContent, computeMidLevelHumidity, computeStormSize, computeFormationPotential, describeFormationBlockers } from './environment';
 export { computeWindAtPoint, computeWindGrid } from './windField';
 export { getTyphoonLevel, getLevelName, getLevelColor, getLevelHexColor, getWindForce, getLevelIntensity, getEyeSpeedMul, getGlowSpeedMul } from './typhoonLevel';
+export { applyRegimeShift, applyFujiwhara, applyTerrainBlocking, applyColdWake, applyStructureChange, clearPhysicsState, accumDeltas, getColdWakeSST } from './physics';

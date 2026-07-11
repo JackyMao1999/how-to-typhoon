@@ -13,7 +13,6 @@ export function StatusBar() {
 
   const isReplay = replayIndex >= 0;
   const mode = isReplay ? (replayPlaying ? '回放中' : '已暂停') : isRunning ? '仿真中' : isFinished ? '已结束' : '已暂停';
-
   const modeColor = isReplay ? 'bg-blue-600/25 text-blue-300 border-blue-500/40'
     : isRunning ? 'bg-red-600/25 text-red-300 border-red-500/40'
     : 'bg-gray-600/25 text-gray-300 border-gray-500/40';

@@ -19,6 +19,11 @@ export interface EngineConfig {
   oceanHeatContent: number;
   midLevelHumidity: number;
   stormSize: number;
+  regimeShiftEnabled: boolean;
+  fujiwharaEnabled: boolean;
+  terrainBlockingEnabled: boolean;
+  coldWakeEnabled: boolean;
+  structureChangeEnabled: boolean;
 }
 
 export const DEFAULT_ENGINE_CONFIG: EngineConfig = {
@@ -38,6 +43,11 @@ export const DEFAULT_ENGINE_CONFIG: EngineConfig = {
   oceanHeatContent: 0.6,
   midLevelHumidity: 70,
   stormSize: 0.5,
+  regimeShiftEnabled: true,
+  fujiwharaEnabled: false,
+  terrainBlockingEnabled: true,
+  coldWakeEnabled: true,
+  structureChangeEnabled: true,
 };
 
 export interface PathSmoothOptions {

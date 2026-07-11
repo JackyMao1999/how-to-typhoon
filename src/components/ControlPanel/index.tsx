@@ -58,6 +58,8 @@ const SEASONS = ['spring', 'summer', 'autumn', 'winter'] as const;
 const TOGGLE_IDS: Record<string, string> = {
   '风圈': 'ctrl-toggle-windcircle',
   '路径预测': 'ctrl-toggle-prediction',
+  '集合预报': 'ctrl-toggle-ensemble',
+  '登陆点': 'ctrl-toggle-landfall',
   '历史路径': 'ctrl-toggle-path',
   '海岸线': 'ctrl-toggle-coastline',
 };
@@ -69,16 +71,24 @@ export function ControlPanel() {
   const toggleAutoOverride = useTyphoonStore((s) => s.toggleAutoOverride);
   const season = useTyphoonStore((s) => s.season);
   const setSeason = useTyphoonStore((s) => s.setSeason);
+  const spawnRandom = useTyphoonStore((s) => s.spawnRandom);
+  const start = useTyphoonStore((s) => s.start);
+  const autoSpawn = useTyphoonStore((s) => s.autoSpawn);
+  const toggleAutoSpawn = useTyphoonStore((s) => s.toggleAutoSpawn);
 
   const showWindCircles = useUIStore((s) => s.showWindCircles);
   const showPath = useUIStore((s) => s.showPath);
   const showPrediction = useUIStore((s) => s.showPrediction);
+  const showEnsemblePath = useUIStore((s) => s.showEnsemblePath);
+  const showLandfall = useUIStore((s) => s.showLandfall);
   const showCoastline = useUIStore((s) => s.showCoastline);
   const toggleWindCircles = useUIStore((s) => s.toggleWindCircles);
   const toggleRegionMonitor = useUIStore((s) => s.toggleRegionMonitor);
   const monitoredRegions = useUIStore((s) => s.monitoredRegions);
   const togglePath = useUIStore((s) => s.togglePath);
   const togglePrediction = useUIStore((s) => s.togglePrediction);
+  const toggleEnsemblePath = useUIStore((s) => s.toggleEnsemblePath);
+  const toggleLandfall = useUIStore((s) => s.toggleLandfall);
   const toggleCoastline = useUIStore((s) => s.toggleCoastline);
 
   const [open, setOpen] = React.useState(false);
@@ -160,6 +170,39 @@ export function ControlPanel() {
                 </span>
               </span>
             </label>
+            <label className={`mt-3 flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors ${
+              autoSpawn
+                ? 'border-cyan-400/30 bg-cyan-950/20'
+                : 'border-gray-700/30 bg-dark-bg/30 hover:border-cyan-300/30'
+            }`}>
+              <input
+                type="checkbox"
+                checked={autoSpawn}
+                onChange={toggleAutoSpawn}
+                className="h-4 w-4 accent-typhoon-lv7 rounded"
+              />
+              <span>
+                <span className="block text-xs font-bold text-gray-200">自动生成</span>
+                <span className="mt-0.5 block text-[10px] text-gray-500">台风结束后自动生成新台风</span>
+              </span>
+            </label>
+            <button
+              onClick={() => { spawnRandom(); start(); setOpen(false); }}
+              className="mt-3 w-full rounded-xl border border-gray-700/30 bg-dark-bg/40 px-3 py-2 text-xs font-semibold text-typhoon-lv7 transition-colors hover:border-cyan-300/40"
+            >
+              🎲 随机生成台风
+            </button>
+          </div>
+
+          <div className="pt-3 border-t border-gray-700/30">
+            <h3 className="panel-title mb-2 font-sans">Physics</h3>
+            <div className="grid grid-cols-2 gap-1.5">
+              <PhysicsToggle label="环流突变" enabled={engineConfig.regimeShiftEnabled} onToggle={(v) => updateEngineConfig({ regimeShiftEnabled: v } as any)} desc="副高/西风槽突然变化" />
+              <PhysicsToggle label="藤原效应" enabled={engineConfig.fujiwharaEnabled} onToggle={(v) => updateEngineConfig({ fujiwharaEnabled: v } as any)} desc="虚拟涡旋相互作用" />
+              <PhysicsToggle label="地形阻拦" enabled={engineConfig.terrainBlockingEnabled} onToggle={(v) => updateEngineConfig({ terrainBlockingEnabled: v } as any)} desc="山脉阻挡与结构重塑" />
+              <PhysicsToggle label="冷尾流" enabled={engineConfig.coldWakeEnabled} onToggle={(v) => updateEngineConfig({ coldWakeEnabled: v } as any)} desc="海温下降抑制强度" />
+              <PhysicsToggle label="眼墙置换" enabled={engineConfig.structureChangeEnabled} onToggle={(v) => updateEngineConfig({ structureChangeEnabled: v } as any)} desc="EWRC 与移速突变" />
+            </div>
           </div>
 
           <div className="pt-3 border-t border-gray-700/30">
@@ -196,6 +239,8 @@ export function ControlPanel() {
             <div className="grid grid-cols-2 gap-2">
               <Toggle id={TOGGLE_IDS['风圈']} label="风圈" checked={showWindCircles} onChange={toggleWindCircles} />
               <Toggle id={TOGGLE_IDS['路径预测']} label="路径预测" checked={showPrediction} onChange={togglePrediction} />
+              <Toggle id={TOGGLE_IDS['集合预报']} label="集合预报" checked={showEnsemblePath} onChange={toggleEnsemblePath} />
+              <Toggle id={TOGGLE_IDS['登陆点']} label="登陆点" checked={showLandfall} onChange={toggleLandfall} />
               <Toggle id={TOGGLE_IDS['历史路径']} label="历史路径" checked={showPath} onChange={togglePath} />
               <Toggle id={TOGGLE_IDS['海岸线']} label="海岸线" checked={showCoastline} onChange={toggleCoastline} />
             </div>
@@ -251,6 +296,21 @@ function Toggle({ id, label, checked, onChange }: { id: string; label: string; c
       <input id={id} type="checkbox" checked={checked} onChange={onChange}
         className="w-3.5 h-3.5 accent-typhoon-lv7 rounded" />
       <span>{label}</span>
+    </label>
+  );
+}
+
+function PhysicsToggle({ label, enabled, onToggle, desc }: { label: string; enabled: boolean; onToggle: (v: boolean) => void; desc: string }) {
+  return (
+    <label className={`flex items-start gap-2 rounded-lg border p-2 cursor-pointer transition-colors ${
+      enabled ? 'border-cyan-500/25 bg-cyan-950/15' : 'border-gray-700/30 bg-dark-bg/30 hover:border-cyan-300/30'
+    }`}>
+      <input type="checkbox" checked={enabled} onChange={(e) => onToggle(e.target.checked)}
+        className="mt-0.5 w-3 h-3 accent-typhoon-lv7 rounded shrink-0" />
+      <span className="min-w-0">
+        <span className="block text-[10px] font-bold text-gray-200 leading-tight">{label}</span>
+        <span className="block text-[9px] text-gray-500 leading-tight mt-0.5">{desc}</span>
+      </span>
     </label>
   );
 }

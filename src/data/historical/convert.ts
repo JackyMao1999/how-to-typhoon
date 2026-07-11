@@ -71,6 +71,7 @@ export function historicalToStatuses(typhoon: HistoricalTyphoon): TyphoonStatus[
       lifeStage: estimateLifeStage(point.maxWindSpeed, index, points.length),
       isFinished: index === points.length - 1,
       maxSpeedReached,
+      activeEffects: [],
     };
   });
 }
