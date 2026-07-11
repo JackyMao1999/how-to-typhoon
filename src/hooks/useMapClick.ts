@@ -17,6 +17,26 @@ export interface SSTDisplay {
   lat: number;
 }
 
+function getMouseClientPosition(e: any, map: any): { x: number; y: number } | null {
+  const original = e.originalEvent;
+  if (typeof original?.clientX === 'number' && typeof original?.clientY === 'number') {
+    return { x: original.clientX, y: original.clientY };
+  }
+
+  if (e.pixel && typeof e.pixel.x === 'number' && typeof e.pixel.y === 'number') {
+    const container = map?.getContainer?.();
+    const rect = container?.getBoundingClientRect?.();
+    if (rect) {
+      return {
+        x: rect.left + e.pixel.x,
+        y: rect.top + e.pixel.y,
+      };
+    }
+  }
+
+  return null;
+}
+
 export function useMapClick() {
   const { map } = useMap();
   const setHoveredPoint = useUIStore((s) => s.setHoveredPoint);
@@ -69,11 +89,14 @@ export function useMapClick() {
       const gcjLng = lnglat.getLng();
       const gcjLat = lnglat.getLat();
       const [wgsLng, wgsLat] = gcj02ToWgs84(gcjLng, gcjLat);
+      const pos = getMouseClientPosition(e, map);
+      if (!pos) return;
+
       const land = isOverLand(wgsLng, wgsLat);
       const temp = land ? computeLandTemp(wgsLat, season) : computeSeaTemp(wgsLat, season);
       setSSTDisplay({
-        x: e.originalEvent?.clientX ?? 0,
-        y: e.originalEvent?.clientY ?? 0,
+        x: pos.x,
+        y: pos.y,
         temp,
         label: land ? '陆温' : '海温',
         lng: wgsLng,

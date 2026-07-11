@@ -4,28 +4,37 @@ import { EngineConfig } from '../types/engine';
 const SST_THRESHOLD = 26.5;
 const LAND_FRICTION_FACTOR = 0.12;
 const INTENSIFY_RATE = 0.04;
-const DISSIPATED_WIND_SPEED = 10.8;
+const EXTREME_INTENSIFY_RATE = 0.08;
+const STOP_WIND_SPEED = 1.6;
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
 
 /** 强度演化：forming/developing 阶段逐步提升风速 */
 export function applyIntensityEvolution(
   status: TyphoonStatus,
   config: EngineConfig,
 ): { maxWindSpeed: number; pressure: number } {
-  const { seaSurfaceTemp } = config;
+  const { seaSurfaceTemp, extremeMode } = config;
   const absLat = Math.abs(status.centerLat);
   const lifeStage = determineLifeStage(status, config);
 
   let speed = status.maxWindSpeed;
   let pressure = status.pressure;
 
-  if (lifeStage === 'forming' || lifeStage === 'developing') {
-    const target = Math.max(
-      speed,
-      15 + Math.max(0, seaSurfaceTemp - 26) * 3 + Math.max(0, 30 - absLat) * 0.25,
+  if (lifeStage === 'forming' || lifeStage === 'developing' || (extremeMode && lifeStage === 'mature')) {
+    const normalPotential = 15 + Math.max(0, seaSurfaceTemp - 26) * 3 + Math.max(0, 30 - absLat) * 0.25;
+    const extremePotential = clamp(
+      68 + Math.max(0, seaSurfaceTemp - 28) * 5 + Math.max(0, 22 - absLat) * 0.6,
+      62,
+      78,
     );
-    speed += (target - speed) * INTENSIFY_RATE;
+    const target = Math.max(speed, extremeMode ? extremePotential : normalPotential);
+    const rate = extremeMode ? EXTREME_INTENSIFY_RATE : INTENSIFY_RATE;
+    speed += (target - speed) * rate;
     speed = Math.round(speed * 10) / 10;
-    pressure = Math.round(pressure - (speed - status.maxWindSpeed) * 1.2);
+    pressure = Math.round(pressure - (speed - status.maxWindSpeed) * (extremeMode ? 1.8 : 1.2));
   }
 
   return { maxWindSpeed: speed, pressure };
@@ -40,12 +49,10 @@ export function determineLifeStage(
 
   const absLat = Math.abs(centerLat);
 
-  if (maxWindSpeed <= 0) return 'dissipated';
-  if (maxWindSpeed < DISSIPATED_WIND_SPEED && maxSpeedReached >= 17.2) return 'dissipated';
-  if (maxWindSpeed < 13.9 && pressure >= 1010) return 'dissipated';
+  if (maxWindSpeed < STOP_WIND_SPEED) return 'dissipated';
 
-  if (absLat < minLatitude) return maxWindSpeed < 13.9 ? 'dissipated' : 'decaying';
-  if (absLat > maxLatitude) return maxWindSpeed < 13.9 ? 'dissipated' : 'decaying';
+  if (absLat < minLatitude) return 'decaying';
+  if (absLat > maxLatitude) return 'decaying';
 
   if (isOverLand) return 'decaying';
   if (maxWindSpeed < 17.2) {
@@ -78,7 +85,8 @@ export function applyDecay(
     multiplier *= Math.max(0.1, 1 - frictionCoefficient * LAND_FRICTION_FACTOR);
   }
 
-  const newSpeed = Math.round(status.maxWindSpeed * multiplier * 10) / 10;
+  const rawSpeed = status.maxWindSpeed * multiplier;
+  const newSpeed = Math.round(rawSpeed * 10) / 10;
   const newPressure = Math.round(
     status.pressure + (status.maxWindSpeed - newSpeed) * 1.5
   );

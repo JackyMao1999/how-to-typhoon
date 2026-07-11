@@ -40,7 +40,8 @@ export function getWindForce(speed: number): number {
   if (speed < 51.0) return 15;
   if (speed < 56.1) return 16;
   if (speed < 61.3) return 17;
-  return 18;
+  if (speed < 69.4) return 18;
+  return 19;
 }
 
 export function getLevelIntensity(speed: number): number {

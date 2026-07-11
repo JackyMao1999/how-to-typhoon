@@ -57,12 +57,17 @@ export class TyphoonEngine {
     );
 
     const nextRadiusMaxWind = Math.round(
-      Math.max(12, Math.min(80, status.radiusMaxWind + (newSpeed - status.movingSpeed) * 0.2 + (maxWindSpeed - status.maxWindSpeed) * 0.35))
+      Math.max(12, Math.min(this.config.extremeMode ? 95 : 80, status.radiusMaxWind + (newSpeed - status.movingSpeed) * 0.2 + (maxWindSpeed - status.maxWindSpeed) * 0.35))
     );
     const dynamicBaseRadii = calculateDynamicBaseRadii(maxWindSpeed, nextRadiusMaxWind);
+    const baseRadii = this.config.extremeMode
+      ? Object.fromEntries(
+        Object.entries(dynamicBaseRadii).map(([level, radius]) => [level, Math.round((radius ?? 0) * 1.15)])
+      )
+      : dynamicBaseRadii;
 
     const windCircles = calculateAsymmetricRadii({
-      baseRadii: dynamicBaseRadii,
+      baseRadii,
       movingSpeed: newSpeed,
       movingDirection: finalDir,
       asymmetryFactor: 0.2,

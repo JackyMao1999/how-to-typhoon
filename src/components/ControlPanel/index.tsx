@@ -98,6 +98,29 @@ export function ControlPanel() {
           </div>
 
           <div className="pt-3 border-t border-gray-700/30">
+            <h3 className="panel-title mb-2 font-sans">Extreme Mode</h3>
+            <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors ${
+              engineConfig.extremeMode
+                ? 'border-red-400/40 bg-red-950/25'
+                : 'border-gray-700/30 bg-dark-bg/30 hover:border-cyan-300/30'
+            }`}>
+              <input
+                id="ctrl-extreme-mode"
+                type="checkbox"
+                checked={engineConfig.extremeMode}
+                onChange={(e) => updateEngineConfig({ extremeMode: e.target.checked })}
+                className="mt-1 h-4 w-4 accent-typhoon-lv12"
+              />
+              <span>
+                <span className="block text-xs font-bold text-gray-200">19级风暴模拟</span>
+                <span className="mt-1 block text-[10px] leading-relaxed text-gray-500">
+                  开启后提高最大潜势强度，用于极端情景演示，非默认现实预报模式。
+                </span>
+              </span>
+            </label>
+          </div>
+
+          <div className="pt-3 border-t border-gray-700/30">
             <h3 className="panel-title mb-2 font-sans">Season</h3>
             <div className="segmented">
               {SEASONS.map((s) => (

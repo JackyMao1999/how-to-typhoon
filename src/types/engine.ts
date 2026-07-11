@@ -14,6 +14,7 @@ export interface EngineConfig {
   maxLatitude: number;
   minLatitude: number;
   season: Season;
+  extremeMode: boolean;
 }
 
 export const DEFAULT_ENGINE_CONFIG: EngineConfig = {
@@ -28,6 +29,7 @@ export const DEFAULT_ENGINE_CONFIG: EngineConfig = {
   maxLatitude: 45,
   minLatitude: 5,
   season: 'summer',
+  extremeMode: false,
 };
 
 export interface PathSmoothOptions {
