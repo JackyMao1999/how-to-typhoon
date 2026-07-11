@@ -34,6 +34,14 @@ type AutoKey = 'seaSurfaceTemp' | 'landTemperature' | 'frictionCoefficient' | 's
 
 const SEASONS = ['spring', 'summer', 'autumn', 'winter'] as const;
 
+const TOGGLE_IDS: Record<string, string> = {
+  '粒子系统': 'ctrl-toggle-particles',
+  '风场': 'ctrl-toggle-windfield',
+  '风圈': 'ctrl-toggle-windcircle',
+  '路径预测': 'ctrl-toggle-prediction',
+  '历史路径': 'ctrl-toggle-path',
+};
+
 export function ControlPanel() {
   const updateEngineConfig = useTyphoonStore((s) => s.updateEngineConfig);
   const engineConfig = useTyphoonStore((s) => s.engineConfig);
@@ -64,58 +72,55 @@ export function ControlPanel() {
   ];
 
   return (
-    <div className="absolute top-12 right-4 z-10">
-      <div className="relative">
-        <button
-          onClick={() => setOpen(!open)}
-          className="bg-dark-surface/90 backdrop-blur-md border border-gray-700/50 rounded-lg px-3 py-2 text-sm text-gray-300 hover:text-white transition-colors"
-        >
-          {open ? '✕ 关闭' : '⚙ 控制'}
-        </button>
+    <div className="absolute top-16 right-3 md:right-4 z-10">
+      <button id="ctrl-toggle-btn"
+        onClick={() => setOpen(!open)}
+        className="glass-button rounded-xl px-3.5 py-2 text-sm font-semibold cursor-pointer shadow-lg shadow-black/20"
+      >
+        {open ? '关闭' : '控制台'}
+      </button>
 
-        {open && (
-          <div className="absolute top-full right-0 mt-1.5 bg-dark-surface/95 backdrop-blur-md border border-gray-700/50 rounded-lg p-4 min-w-[280px] font-mono text-sm space-y-4 shadow-xl">
-            <div>
-              <h3 className="text-xs text-gray-500 uppercase tracking-wider mb-2">环境参数</h3>
-              <div className="space-y-2">
-                {sliders.map(({ key, label, value, min, max, step, suffix, autoKey }) => (
-                  <SliderRow key={key} label={label} value={value} min={min} max={max} step={step} suffix={suffix}
-                    autoOn={autoOverrides[autoKey]} info={PARAM_INFO[key]}
-                    onChange={(v) => { if (autoOverrides[autoKey]) toggleAutoOverride(autoKey); updateEngineConfig({ [key]: v } as any); }}
-                    onToggleAuto={() => toggleAutoOverride(autoKey)} />
-                ))}
-              </div>
+      {open && (
+        <div className="absolute top-full right-0 mt-2 panel p-4 w-[calc(100vw-24px)] max-w-[340px] md:w-[320px] font-mono space-y-4 max-h-[calc(100vh-140px)] overflow-y-auto">
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="panel-title font-sans">Environment</h3>
+              <span className="text-[10px] text-gray-500">A 自动 / M 手动</span>
             </div>
-
-            <div className="pt-2 border-t border-gray-700/30">
-              <h3 className="text-xs text-gray-500 uppercase tracking-wider mb-2">季节模式</h3>
-              <div className="flex gap-1 mt-1">
-                {SEASONS.map((s) => (
-                  <button key={s} onClick={() => setSeason(s)}
-                    className={`flex-1 text-[10px] font-bold py-1 rounded border transition-colors ${
-                      season === s
-                        ? 'bg-typhoon-lv7/30 text-typhoon-lv7 border-typhoon-lv7/50'
-                        : 'bg-dark-bg/50 text-gray-500 border-gray-700/30 hover:border-gray-500'
-                    }`}>
-                    {{ spring: '春', summer: '夏', autumn: '秋', winter: '冬' }[s]}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-gray-700/30">
-              <h3 className="text-xs text-gray-500 uppercase tracking-wider mb-2">图层切换</h3>
-              <div className="space-y-1">
-                <Toggle label="粒子系统" checked={showParticles} onChange={toggleParticles} />
-                <Toggle label="风场" checked={showWindField} onChange={toggleWindField} />
-                <Toggle label="风圈" checked={showWindCircles} onChange={toggleWindCircles} />
-                <Toggle label="路径预测" checked={showPrediction} onChange={togglePrediction} />
-                <Toggle label="历史路径" checked={showPath} onChange={togglePath} />
-              </div>
+            <div className="space-y-2.5">
+              {sliders.map(({ key, label, value, min, max, step, suffix, autoKey }) => (
+                <SliderRow key={key} id={`ctrl-slider-${key}`} label={label} value={value} min={min} max={max} step={step} suffix={suffix}
+                  autoOn={autoOverrides[autoKey]} info={PARAM_INFO[key]}
+                  onChange={(v) => { if (autoOverrides[autoKey]) toggleAutoOverride(autoKey); updateEngineConfig({ [key]: v } as any); }}
+                  onToggleAuto={() => toggleAutoOverride(autoKey)} />
+              ))}
             </div>
           </div>
-        )}
-      </div>
+
+          <div className="pt-3 border-t border-gray-700/30">
+            <h3 className="panel-title mb-2 font-sans">Season</h3>
+            <div className="segmented">
+              {SEASONS.map((s) => (
+                <button key={s} id={`ctrl-season-${s}`} onClick={() => setSeason(s)}
+                  className={season === s ? 'active' : ''}>
+                  {{ spring: '春', summer: '夏', autumn: '秋', winter: '冬' }[s]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-gray-700/30">
+            <h3 className="panel-title mb-2 font-sans">Layers</h3>
+            <div className="grid grid-cols-2 gap-2">
+              <Toggle id={TOGGLE_IDS['粒子系统']} label="粒子系统" checked={showParticles} onChange={toggleParticles} />
+              <Toggle id={TOGGLE_IDS['风场']} label="风场" checked={showWindField} onChange={toggleWindField} />
+              <Toggle id={TOGGLE_IDS['风圈']} label="风圈" checked={showWindCircles} onChange={toggleWindCircles} />
+              <Toggle id={TOGGLE_IDS['路径预测']} label="路径预测" checked={showPrediction} onChange={togglePrediction} />
+              <Toggle id={TOGGLE_IDS['历史路径']} label="历史路径" checked={showPath} onChange={togglePath} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -124,35 +129,34 @@ function InfoIcon({ info }: { info: { title: string; desc: string; effect: strin
   return (
     <span className="group relative inline-flex items-center justify-center w-4 h-4 rounded-full border border-gray-500 text-gray-400 text-[10px] cursor-help ml-1 hover:border-typhoon-lv7 hover:text-typhoon-lv7 transition-colors leading-none shrink-0">
       !
-      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 w-56 p-2.5 bg-dark-bg border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-20">
+      <div className="absolute top-full right-0 md:left-1/2 md:right-auto md:-translate-x-1/2 mt-2 w-56 p-2.5 bg-dark-bg border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-20">
         <div className="text-typhoon-lv7 text-xs font-bold mb-1">{info.title}</div>
         <div className="text-gray-300 text-[10px] leading-relaxed mb-1">{info.desc}</div>
-        <div className="text-gray-500 text-[9px] italic">💡 {info.effect}</div>
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-px w-2 h-2 bg-dark-bg border-l border-t border-gray-600 rotate-45" />
+        <div className="text-gray-500 text-[9px] italic">{info.effect}</div>
       </div>
     </span>
   );
 }
 
-function SliderRow({ label, value, min, max, step, suffix = '', autoOn, info, onChange, onToggleAuto }: {
-  label: string; value: number; min: number; max: number; step: number; suffix?: string;
+function SliderRow({ id, label, value, min, max, step, suffix = '', autoOn, info, onChange, onToggleAuto }: {
+  id: string; label: string; value: number; min: number; max: number; step: number; suffix?: string;
   autoOn: boolean; info: { title: string; desc: string; effect: string };
   onChange: (v: number) => void; onToggleAuto: () => void;
 }) {
   return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-gray-400 text-xs w-auto min-w-[40px] shrink-0 flex items-center">
+    <div className="flex items-center gap-2">
+      <span className="text-gray-400 text-xs w-auto min-w-[58px] shrink-0 flex items-center">
         {label}<InfoIcon info={info} />
       </span>
-      <input type="range" min={min} max={max} step={step} value={value}
+      <input id={id} type="range" min={min} max={max} step={step} value={value}
         onChange={(e) => onChange(parseFloat(e.target.value))}
-        className="flex-1 h-1 accent-typhoon-lv7 min-w-0" />
-      <span className="text-gray-300 text-[10px] w-10 text-right shrink-0">
+        className="flex-1 h-1.5 accent-typhoon-lv7 min-w-0 rounded-full" />
+      <span className="text-gray-200 text-xs w-12 text-right shrink-0 font-mono">
         {step >= 1 ? value.toFixed(0) : value.toFixed(step >= 0.5 ? 1 : 2)}{suffix}
       </span>
       <button onClick={(e) => { e.stopPropagation(); onToggleAuto(); }}
-        className={`text-[9px] font-bold rounded px-1.5 py-0.5 border transition-colors shrink-0 ${
-          autoOn ? 'bg-green-900/30 text-green-400 border-green-700/40' : 'bg-yellow-900/30 text-yellow-400 border-yellow-700/40'
+        className={`text-[10px] font-bold rounded-md px-1.5 py-0.5 border transition-colors shrink-0 ${
+          autoOn ? 'bg-green-900/25 text-green-400 border-green-700/35' : 'bg-yellow-900/25 text-yellow-400 border-yellow-700/35'
         }`}>
         {autoOn ? 'A' : 'M'}
       </button>
@@ -160,11 +164,12 @@ function SliderRow({ label, value, min, max, step, suffix = '', autoOn, info, on
   );
 }
 
-function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
+function Toggle({ id, label, checked, onChange }: { id: string; label: string; checked: boolean; onChange: () => void }) {
   return (
-    <label className="flex items-center gap-2 cursor-pointer text-xs text-gray-300">
-      <input type="checkbox" checked={checked} onChange={onChange} className="accent-typhoon-lv7" />
-      {label}
+    <label className="flex items-center gap-2 cursor-pointer rounded-lg border border-gray-700/30 bg-dark-bg/30 px-2.5 py-2 text-xs text-gray-300 transition-colors hover:border-cyan-300/30">
+      <input id={id} type="checkbox" checked={checked} onChange={onChange}
+        className="w-3.5 h-3.5 accent-typhoon-lv7 rounded" />
+      <span>{label}</span>
     </label>
   );
 }

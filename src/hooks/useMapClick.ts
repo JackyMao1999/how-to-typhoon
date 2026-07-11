@@ -6,12 +6,13 @@ import { WindLevel } from '../types/typhoon';
 import { haversineDistance } from '../utils/geo';
 import { gcj02ToWgs84 } from '../utils/coord';
 import { isOverLand } from '../engine/landmass';
-import { computeSeaTemp } from '../engine';
+import { computeSeaTemp, computeLandTemp } from '../engine';
 
 export interface SSTDisplay {
   x: number;
   y: number;
-  sst: number;
+  temp: number;
+  label: string;
   lng: number;
   lat: number;
 }
@@ -65,14 +66,18 @@ export function useMapClick() {
     (e: any) => {
       const lnglat = e.lnglat;
       if (!lnglat) return;
-      const lat = lnglat.getLat();
-      const sst = computeSeaTemp(lat, season);
+      const gcjLng = lnglat.getLng();
+      const gcjLat = lnglat.getLat();
+      const [wgsLng, wgsLat] = gcj02ToWgs84(gcjLng, gcjLat);
+      const land = isOverLand(wgsLng, wgsLat);
+      const temp = land ? computeLandTemp(wgsLat, season) : computeSeaTemp(wgsLat, season);
       setSSTDisplay({
         x: e.originalEvent?.clientX ?? 0,
         y: e.originalEvent?.clientY ?? 0,
-        sst,
-        lng: lnglat.getLng(),
-        lat,
+        temp,
+        label: land ? '陆温' : '海温',
+        lng: wgsLng,
+        lat: wgsLat,
       });
     },
     [map, season]

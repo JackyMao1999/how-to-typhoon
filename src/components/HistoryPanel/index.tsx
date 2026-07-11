@@ -16,22 +16,21 @@ export function HistoryPanel() {
   const [open, setOpen] = React.useState(false);
 
   return (
-    <div className="absolute bottom-24 left-4 z-10">
-      <button
+    <div className="absolute bottom-32 md:bottom-24 left-3 md:left-4 z-10">
+      <button id="history-btn"
         onClick={() => setOpen(!open)}
-        className="bg-dark-surface/90 backdrop-blur-md border border-gray-700/50 rounded-lg px-2.5 py-2 text-xs text-gray-300 hover:text-white transition-colors"
+        className="glass-button rounded-xl px-3 py-2 text-xs font-semibold"
       >
-        {open ? '▼ 历史' : '📋 历史'}
+        {open ? '收起历史' : '历史记录'}
       </button>
 
       {open && (
-        <div className="absolute bottom-full left-0 mb-1.5 bg-dark-surface/95 backdrop-blur-md border border-gray-700/50 rounded-lg p-2 min-w-[210px] max-h-[360px] overflow-y-auto font-mono space-y-1 shadow-xl">
+        <div id="history-list" className="absolute bottom-full left-0 mb-2 panel p-2 min-w-[240px] max-h-[360px] overflow-y-auto font-mono space-y-1">
           {sessions.length === 0 && (
             <div className="p-2 text-xs text-gray-500">暂无历史记录</div>
           )}
           {sessions.map((s, i) => (
-            <button
-              key={i}
+            <button key={i} id={`history-item-${i}`}
               onClick={() => { loadSession(i); setOpen(false); }}
               className="w-full text-left p-2 rounded hover:bg-dark-surface-light/50 transition-colors"
             >

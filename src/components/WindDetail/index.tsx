@@ -10,14 +10,14 @@ export function WindDetail() {
   if (!detailPanelOpen || !hoveredPoint) return null;
 
   return (
-    <div className="absolute bottom-20 left-4 z-10 bg-dark-surface/95 backdrop-blur-md border border-gray-700/50 rounded-lg p-4 font-mono text-sm min-w-[200px]">
+    <div className="absolute bottom-32 md:bottom-20 left-3 md:left-4 z-10 panel p-4 font-mono text-sm min-w-[220px]">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-gray-500 uppercase">风速详情</span>
+        <span className="panel-title">Wind Detail</span>
         <button
           onClick={() => setDetailPanelOpen(false)}
           className="text-gray-500 hover:text-white text-xs"
         >
-          ✕
+          X
         </button>
       </div>
 

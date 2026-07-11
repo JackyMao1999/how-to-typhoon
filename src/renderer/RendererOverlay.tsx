@@ -7,7 +7,7 @@ import { EyeEffect } from './EyeEffect';
 import { WindCircleGlow } from './WindCircleGlow';
 import { WindField } from './WindField';
 import { wgs84ToGcj02 } from '../utils/coord';
-import { getLevelColor, getEyeSpeedMul, getGlowSpeedMul, getTyphoonLevel } from '../engine';
+import { getEyeSpeedMul, getGlowSpeedMul, getTyphoonLevel } from '../engine';
 import { TYPHOON_LEVEL_CONFIG, TyphoonLevel } from '../types/typhoon';
 
 export function RendererOverlay() {
@@ -21,7 +21,6 @@ export function RendererOverlay() {
   const eyeRef = useRef<EyeEffect | null>(null);
   const glowRef = useRef<WindCircleGlow | null>(null);
   const windFieldRef = useRef<WindField | null>(null);
-  const customLayerRef = useRef<any>(null);
 
   const stateRef = useRef(displayState);
   const particlesVisibleRef = useRef(showParticles);
@@ -55,92 +54,94 @@ export function RendererOverlay() {
     windField.init();
     windFieldRef.current = windField;
 
-    const customLayer = new window.AMap.CustomLayer(canvas, {
-      zooms: [3, 18],
-      alwaysRender: true,
-    });
-
+    let animId = 0;
     let lastTime = performance.now();
 
-    customLayer.render = () => {
-      const now = performance.now();
-      const delta = (now - lastTime) / 1000;
-      lastTime = now;
+    function render() {
+      animId = requestAnimationFrame(render);
+      if (!gl) return;
+      try {
+        const now = performance.now();
+        const delta = (now - lastTime) / 1000;
+        lastTime = now;
 
-      const w = canvas.width;
-      const h = canvas.height;
-      if (w === 0 || h === 0) return;
+        const container = map.getContainer();
+        const cw = container.clientWidth;
+        const ch = container.clientHeight;
+        const pw = cw * devicePixelRatio;
+        const ph = ch * devicePixelRatio;
 
-      gl.viewport(0, 0, w, h);
-      gl.clear(gl.COLOR_BUFFER_BIT);
+        if (pw === 0 || ph === 0) return;
 
-      const zoom = map.getZoom();
-      const zoomScale = Math.pow(2, zoom - 4);
-      const NDC_PER_UNIT = 1 / (500 * Math.tan(37.5 * Math.PI / 180));
-      const ndcScale = zoomScale * NDC_PER_UNIT;
+        if (canvas.width !== pw || canvas.height !== ph) {
+          canvas.width = pw;
+          canvas.height = ph;
+          canvas.style.width = cw + 'px';
+          canvas.style.height = ch + 'px';
+        }
 
-      const s = stateRef.current;
-      const [gcjLng, gcjLat] = wgs84ToGcj02(s.centerLng, s.centerLat);
-      const pixel = map.lngLatToContainer([gcjLng, gcjLat]);
+        gl.viewport(0, 0, pw, ph);
+        gl.clear(gl.COLOR_BUFFER_BIT);
 
-      const offsetNDC: [number, number] = [
-        (pixel.x - w / 2) / (w / 2),
-        -(pixel.y - h / 2) / (h / 2),
-      ];
+        const zoom = map.getZoom();
+        if (!zoom || isNaN(zoom)) return;
+        const zoomScale = Math.pow(2, zoom - 4);
+        const NDC_PER_UNIT = 1 / (500 * Math.tan(37.5 * Math.PI / 180));
+        const ndcScale = zoomScale * NDC_PER_UNIT;
 
-      const speed = s.maxWindSpeed;
-      const level = getTyphoonLevel(speed);
-      const particleColor = TYPHOON_LEVEL_CONFIG[level].color;
-      const eyeSpeedMul = getEyeSpeedMul(speed);
-      const glowSpeedMul = getGlowSpeedMul(speed);
-      const eyeColor = level === TyphoonLevel.SuperTY ? [1.0, 1.0, 1.0] as [number, number, number] : particleColor;
+        const s = stateRef.current;
+        const [gcjLng, gcjLat] = wgs84ToGcj02(s.centerLng, s.centerLat);
+        const pixel = map.lngLatToContainer([gcjLng, gcjLat]);
+        if (!pixel || isNaN(pixel.x) || isNaN(pixel.y)) return;
 
-      if (particlesVisibleRef.current) {
-        particles.update(now);
-        particles.draw(offsetNDC, ndcScale, [w, h], 0.8, zoomScale, particleColor);
-      }
+        // 台风在屏幕外超出一定距离则跳过渲染（防止日界线附近坐标异常）
+        const onScreen = pixel.x >= -100 && pixel.x <= pw + 100 && pixel.y >= -100 && pixel.y <= ph + 100;
 
-      eye.update(delta);
-      eye.draw(offsetNDC, ndcScale, eyeSpeedMul, eyeColor);
+        const offsetNDC: [number, number] = [
+          (pixel.x - pw / 2) / (pw / 2),
+          -(pixel.y - ph / 2) / (ph / 2),
+        ];
 
-      const windRadii = s.windCircles.map((wc) => Math.max(wc.ne, wc.nw, wc.se, wc.sw)) as [number, number, number];
-      glow.update(delta);
-      glow.draw(offsetNDC, ndcScale, windRadii, glowSpeedMul);
+        const speed = s.maxWindSpeed;
+        const level = getTyphoonLevel(speed);
+        const particleColor = TYPHOON_LEVEL_CONFIG[level].color;
+        const eyeSpeedMul = getEyeSpeedMul(speed);
+        const glowSpeedMul = getGlowSpeedMul(speed);
+        const eyeColor = level === TyphoonLevel.SuperTY ? [1.0, 1.0, 1.0] as [number, number, number] : particleColor;
 
-      if (windFieldVisibleRef.current) {
-        windField.update(now, s.centerLng, s.centerLat, s, map, delta);
-        windField.draw(offsetNDC, ndcScale, [w, h], 0.8, zoomScale);
-      }
-    };
+        // 中心调试标记（红点），确认 WebGL 渲染始终在工作
+        particles.draw([0, 0], 0.003, [pw, ph], 0.8, zoomScale, [0.8, 0.1, 0.1]);
 
-    map.add(customLayer);
-    customLayerRef.current = customLayer;
+        if (onScreen) {
+          if (particlesVisibleRef.current) {
+            particles.update(now);
+            particles.draw(offsetNDC, ndcScale, [pw, ph], 0.8, zoomScale, particleColor);
+          }
+
+          eye.update(delta);
+          eye.draw(offsetNDC, ndcScale, eyeSpeedMul, eyeColor);
+
+          const windRadii = s.windCircles.map((wc) => Math.max(wc.ne, wc.nw, wc.se, wc.sw)) as [number, number, number];
+          glow.update(delta);
+          glow.draw(offsetNDC, ndcScale, windRadii, glowSpeedMul);
+
+          if (windFieldVisibleRef.current) {
+            windField.update(now, s.centerLng, s.centerLat, s, map, delta);
+            windField.draw(offsetNDC, ndcScale, [pw, ph], 0.8, zoomScale);
+          }
+        }
+      } catch (_) { /* 保证 rAF 循环不中断 */ }
+    }
+
+    animId = requestAnimationFrame(render);
 
     return () => {
-      if (customLayerRef.current && map) map.remove(customLayerRef.current);
+      cancelAnimationFrame(animId);
       particleRef.current?.dispose();
       eyeRef.current?.dispose();
       glowRef.current?.dispose();
       windFieldRef.current?.dispose();
     };
-  }, [isLoaded, map]);
-
-  useEffect(() => {
-    if (!webglRef.current || !map) return;
-    const resize = () => {
-      const c = map.getContainer();
-      const w = c.clientWidth * devicePixelRatio;
-      const h = c.clientHeight * devicePixelRatio;
-      if (webglRef.current) {
-        webglRef.current.width = w;
-        webglRef.current.height = h;
-        webglRef.current.style.width = c.clientWidth + 'px';
-        webglRef.current.style.height = c.clientHeight + 'px';
-      }
-    };
-    resize();
-    map.on('resize', resize);
-    return () => { map.off('resize', resize); };
   }, [isLoaded, map]);
 
   return (

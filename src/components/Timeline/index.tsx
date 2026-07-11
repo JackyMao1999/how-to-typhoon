@@ -3,7 +3,6 @@ import { useTyphoonStore } from '../../store/typhoonStore';
 
 export function Timeline() {
   const isRunning = useTyphoonStore((s) => s.isRunning);
-  const isFinished = useTyphoonStore((s) => s.isFinished);
   const speed = useTyphoonStore((s) => s.speed);
   const history = useTyphoonStore((s) => s.history);
   const fullHistory = useTyphoonStore((s) => s.fullHistory);
@@ -27,49 +26,57 @@ export function Timeline() {
   useEffect(() => {
     if (replayPlaying && hasHistory) {
       const ms = Math.max(50, 200 / speed);
-      replayTimerRef.current = setInterval(() => {
-        nextReplayStep();
-      }, ms);
+      replayTimerRef.current = setInterval(() => nextReplayStep(), ms);
     }
-    return () => {
-      if (replayTimerRef.current) clearInterval(replayTimerRef.current);
-    };
+    return () => { if (replayTimerRef.current) clearInterval(replayTimerRef.current); };
   }, [replayPlaying, hasHistory, speed, nextReplayStep]);
 
   const handlePlayClick = () => {
-    if (hasHistory) {
-      toggleReplay();
-    } else {
-      if (isRunning) pause();
-      else start();
-    }
+    if (hasHistory) toggleReplay();
+    else if (isRunning) pause();
+    else start();
   };
 
+  const currentTime = hasHistory && fullHistory[tabIndex]
+    ? new Date(fullHistory[tabIndex].timestamp).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+    : `${history.length} 步`;
+
   return (
-    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 bg-dark-surface/90 backdrop-blur-md border border-gray-700/50 rounded-lg px-6 py-3 flex items-center gap-4 font-mono">
-      <button onClick={reset} className="text-gray-400 hover:text-white transition-colors text-sm" title="重置">⏮</button>
+    <div id="timeline" className="absolute bottom-3 left-3 right-3 md:bottom-5 md:left-1/2 md:right-auto md:-translate-x-1/2 z-10">
+      <div className="panel px-3 py-3 md:px-5 flex flex-col md:flex-row md:items-center gap-3 md:gap-5 font-mono">
+        <div className="flex items-center gap-3">
+        <button id="timeline-reset" onClick={reset}
+          className="glass-button h-10 w-10 rounded-full text-xs font-bold" title="重置">
+          R
+        </button>
 
-      <button onClick={handlePlayClick}
-        className="w-8 h-8 flex items-center justify-center rounded-full bg-typhoon-lv7/20 hover:bg-typhoon-lv7/40 text-white transition-colors text-lg"
-        title={replayPlaying ? '暂停回放' : isRunning ? '暂停' : hasHistory ? '回放' : '播放'}>
-        {replayPlaying ? '⏸' : isRunning ? '⏸' : '▶'}
-      </button>
+        <button id="timeline-play" onClick={handlePlayClick}
+          className="h-11 w-11 flex items-center justify-center rounded-full bg-cyan-400/20 hover:bg-cyan-400/35 text-white border border-cyan-300/25 transition-colors text-sm font-bold"
+          title={replayPlaying ? '暂停回放' : isRunning ? '暂停' : hasHistory ? '回放' : '播放'}>
+          {replayPlaying || isRunning ? 'II' : '▶'}
+        </button>
 
-      <div className="flex items-center gap-3">
-        <input type="range" min={0} max={maxTab} step={1} value={tabIndex}
-          onChange={(e) => setReplayIndex(parseInt(e.target.value))}
-          className={`w-40 h-1 accent-typhoon-lv7 ${hasHistory ? '' : 'opacity-30 pointer-events-none'}`} />
-        <span className="text-xs text-gray-400 w-24">
-          {hasHistory ? `${replayIndex + 1} / ${fullHistory.length}` : `步数 ${history.length}`}
-        </span>
-      </div>
+        <div className="min-w-0 flex-1 md:w-56">
+          <div className="mb-1 flex items-center justify-between text-[10px] text-gray-500">
+            <span>进度</span>
+            <span id="timeline-step-info">{hasHistory ? `${replayIndex + 1} / ${fullHistory.length}` : currentTime}</span>
+          </div>
+          <input id="timeline-progress" type="range" min={0} max={maxTab} step={1} value={tabIndex}
+            onChange={(e) => setReplayIndex(parseInt(e.target.value))}
+            className={`w-full h-1.5 accent-typhoon-lv7 rounded-full ${hasHistory ? '' : 'opacity-30 pointer-events-none'}`} />
+          <div className="mt-1 text-[10px] text-gray-500">{currentTime}</div>
+        </div>
+        </div>
 
-      <div className="flex items-center gap-2 text-xs text-gray-400">
-        <span>倍速</span>
-        <input type="range" min={0.1} max={5} step={0.1} value={speed}
-          onChange={(e) => setSpeed(parseFloat(e.target.value))}
-          className="w-16 h-1 accent-typhoon-lv7" />
-        <span className="text-gray-300 w-8">{speed.toFixed(1)}x</span>
+        <div className="hidden md:block h-6 w-px bg-gray-700/30" />
+
+        <div className="flex items-center gap-2 text-xs text-gray-400">
+          <span id="timeline-speed-label">倍速</span>
+          <input id="timeline-speed-slider" type="range" min={0.1} max={5} step={0.1} value={speed}
+            onChange={(e) => setSpeed(parseFloat(e.target.value))}
+            className="flex-1 md:w-16 h-1.5 accent-typhoon-lv7 rounded-full" />
+          <span id="timeline-speed-value" className="text-gray-200 w-8 text-right font-medium">{speed.toFixed(1)}x</span>
+        </div>
       </div>
     </div>
   );

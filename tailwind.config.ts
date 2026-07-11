@@ -17,6 +17,7 @@ export default {
         },
       },
       fontFamily: {
+        sans: ['HarmonyOS Sans SC', 'PingFang SC', 'Microsoft YaHei', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
     },

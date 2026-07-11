@@ -2,128 +2,71 @@ import { TyphoonStatus } from '../../types/typhoon';
 import { destinationPoint } from '../../utils/geo';
 import { wgs84ToGcj02Batch } from '../../utils/coord';
 
-let line24: any = null;
-let line48: any = null;
+let polygon24: any = null;
+let polygon48: any = null;
 
 function generateCirclePoints(
-  centerLng: number,
-  centerLat: number,
-  radiusKm: number,
-  segments: number = 64
+  centerLng: number, centerLat: number,
+  radiusKm: number, segments = 48
 ): [number, number][] {
-  const points: [number, number][] = [];
-  for (let i = 0; i < segments; i++) {
-    const angle = (i / segments) * 360;
-    points.push(destinationPoint(centerLng, centerLat, angle, radiusKm));
+  const pts: [number, number][] = [];
+  for (let i = 0; i <= segments; i++) {
+    const a = (i / segments) * 360;
+    pts.push(destinationPoint(centerLng, centerLat, a, radiusKm));
   }
-  points.push(points[0]);
-  return points;
+  return pts;
 }
 
-export function updateWarningLayers(map: any, status: TyphoonStatus): void {
-  const speed = status.movingSpeed;
-  const radius24 = Math.round(speed * 24);
-  const radius48 = Math.round(speed * 48);
+export function updateWarningLayers(
+  map: any,
+  status: TyphoonStatus,
+  predCoords24: [number, number],
+  predCoords48: [number, number],
+): void {
+  const speed = status.maxWindSpeed;
+  const radius24 = Math.round(80 + (speed / 50) * 20);
+  const radius48 = Math.round(145 + (speed / 50) * 25);
 
-  if (radius24 < 10) return;
-
-  const wgs24 = generateCirclePoints(status.centerLng, status.centerLat, radius24);
-  const wgs48 = generateCirclePoints(status.centerLng, status.centerLat, radius48);
+  const wgs24 = generateCirclePoints(predCoords24[0], predCoords24[1], radius24);
+  const wgs48 = generateCirclePoints(predCoords48[0], predCoords48[1], radius48);
   const gcj24 = wgs84ToGcj02Batch(wgs24);
   const gcj48 = wgs84ToGcj02Batch(wgs48);
 
-  if (line24) {
-    line24.setPath(gcj24);
-    line48.setPath(gcj48);
+  if (polygon24) {
+    polygon24.setPath(gcj24);
+    polygon48.setPath(gcj48);
     return;
   }
 
-  line24 = new window.AMap.Polyline({
+  polygon24 = new window.AMap.Polygon({
     path: gcj24,
-    strokeColor: '#FF4444',
-    strokeWeight: 2.5,
+    fillColor: '#FFA500',
+    fillOpacity: 0.2,
+    strokeColor: '#FFA500',
+    strokeWeight: 2,
     strokeOpacity: 0.7,
     strokeStyle: 'dashed',
-    borderWeight: 0,
   });
 
-  line48 = new window.AMap.Polyline({
+  polygon48 = new window.AMap.Polygon({
     path: gcj48,
-    strokeColor: '#FF8844',
+    fillColor: '#0064FF',
+    fillOpacity: 0.1,
+    strokeColor: '#0064FF',
     strokeWeight: 2,
     strokeOpacity: 0.5,
     strokeStyle: 'dashed',
-    borderWeight: 0,
   });
 
-  map.add([line24, line48]);
-
-  // text labels via AMap.Text or Marker
-  const mid24 = destinationPoint(status.centerLng, status.centerLat, 0, radius24);
-  const mid48 = destinationPoint(status.centerLng, status.centerLat, 0, radius48);
-
-  const marker24 = new window.AMap.Text({
-    text: '24h',
-    position: wgs84ToGcj02Batch([mid24])[0],
-    style: {
-      color: '#FF4444',
-      fontSize: '11px',
-      fontWeight: 'bold',
-      fontFamily: 'monospace',
-      backgroundColor: 'transparent',
-      border: 'none',
-    },
-  });
-
-  const marker48 = new window.AMap.Text({
-    text: '48h',
-    position: wgs84ToGcj02Batch([mid48])[0],
-    style: {
-      color: '#FF8844',
-      fontSize: '11px',
-      fontWeight: 'bold',
-      fontFamily: 'monospace',
-      backgroundColor: 'transparent',
-      border: 'none',
-    },
-  });
-
-  // attach as properties so we can remove them later
-  (line24 as any)._label = marker24;
-  (line48 as any)._label = marker48;
-  map.add([marker24, marker48]);
+  map.add([polygon24, polygon48]);
 }
 
 export function removeWarningLayers(map: any): void {
-  if (line24) {
-    if ((line24 as any)._label) map.remove((line24 as any)._label);
-    map.remove(line24);
-    line24 = null;
-  }
-  if (line48) {
-    if ((line48 as any)._label) map.remove((line48 as any)._label);
-    map.remove(line48);
-    line48 = null;
-  }
+  if (polygon24) { map.remove(polygon24); polygon24 = null; }
+  if (polygon48) { map.remove(polygon48); polygon48 = null; }
 }
 
 export function setWarningVisible(visible: boolean): void {
-  if (line24) {
-    if (visible) {
-      line24.show();
-      (line24 as any)._label?.show();
-    } else {
-      line24.hide();
-      (line24 as any)._label?.hide();
-    }
-  }
-  if (line48) {
-    if (visible) {
-      line48.show();
-      (line48 as any)._label?.show();
-    } else {
-      line48.hide();
-      (line48 as any)._label?.hide();
-    }
-  }
+  if (polygon24) { visible ? polygon24.show() : polygon24.hide(); }
+  if (polygon48) { visible ? polygon48.show() : polygon48.hide(); }
 }

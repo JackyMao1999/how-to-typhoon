@@ -1,3 +1,5 @@
+import { TyphoonStatus } from '../../types/typhoon';
+import { getLevelHexColor, getTyphoonLevel } from '../../engine';
 import { wgs84ToGcj02Batch } from '../../utils/coord';
 
 let polyline: any = null;
@@ -62,6 +64,30 @@ export function removePathLayer(map: any): void {
 
 export function removePredictionLayer(map: any): void {
   if (predPolyline) { map.remove(predPolyline); predPolyline = null; }
+}
+
+export function getPathTooltip(
+  fullHistory: TyphoonStatus[],
+  gcjIdx: number,
+): { time: string; text: string; color: string } | null {
+  const entry = fullHistory[gcjIdx];
+  if (!entry) return null;
+  const level = getTyphoonLevel(entry.maxWindSpeed);
+  const color = getLevelHexColor(entry.maxWindSpeed);
+  const d = new Date(entry.timestamp);
+  const time = d.toISOString().slice(0, 13).replace('T', ' ') + ':00';
+  const stage = (() => {
+    switch (level) {
+      case 'td': return '热带低压';
+      case 'ts': return '热带风暴';
+      case 'sts': return '强热带风暴';
+      case 'ty': return '台风';
+      case 'sty': return '强台风';
+      case 'sTY': return '超强台风';
+      default: return '';
+    }
+  })();
+  return { time, text: stage, color };
 }
 
 export function setPathVisible(visible: boolean): void {

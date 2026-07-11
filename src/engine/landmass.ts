@@ -16,9 +16,10 @@ interface BBox {
 const LAND_BOXES: BBox[] = [
   { name: '菲律宾', west: 116, east: 126, south: 5, north: 20 },
   { name: '台湾', west: 119, east: 122, south: 22, north: 26 },
-  { name: '中国大陆沿海', west: 110, east: 122, south: 20, north: 35 },
+  { name: '中国大陆', west: 110, east: 122, south: 20, north: 45 },
+  { name: '中国内陆', west: 105, east: 115, south: 20, north: 40 },
   { name: '日本', west: 129, east: 145, south: 30, north: 45 },
-  { name: '朝鲜半岛', west: 124, east: 130, south: 34, north: 39 },
+  { name: '朝鲜半岛', west: 124, east: 130, south: 34, north: 43 },
   { name: '越南沿海', west: 106, east: 110, south: 8, north: 23 },
 ];
 
