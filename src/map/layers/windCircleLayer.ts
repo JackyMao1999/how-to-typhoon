@@ -26,7 +26,14 @@ export function updateWindCircleLayers(map: any, status: TyphoonStatus): void {
 
   for (const level of levels) {
     const radii = status.windCircles.find((wc) => wc.level === level);
-    if (!radii) continue;
+    if (!radii) {
+      const existing = layers.get(level);
+      if (existing) {
+        existing.fill.hide();
+        existing.outline.hide();
+      }
+      continue;
+    }
 
     const wgsPoints = generateWindCirclePolygon(
       status.centerLng,
@@ -44,6 +51,8 @@ export function updateWindCircleLayers(map: any, status: TyphoonStatus): void {
     if (existing) {
       existing.fill.setPath(gcjPoints);
       existing.outline.setPath(gcjPoints);
+      existing.fill.show();
+      existing.outline.show();
       continue;
     }
 

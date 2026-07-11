@@ -5,7 +5,7 @@ import {
   WindLevel,
 } from '../types/typhoon';
 import { EngineConfig } from '../types/engine';
-import { calculateAsymmetricRadii } from './windCircle';
+import { calculateAsymmetricRadii, calculateDynamicBaseRadii } from './windCircle';
 import { applySteeringFlow, applyCoriolisDeflection, advancePosition } from './path';
 import { determineLifeStage, applyDecay, applyIntensityEvolution } from './lifecycle';
 import { isOverLand } from './landmass';
@@ -56,8 +56,13 @@ export class TyphoonEngine {
       this.config
     );
 
+    const nextRadiusMaxWind = Math.round(
+      Math.max(12, Math.min(80, status.radiusMaxWind + (newSpeed - status.movingSpeed) * 0.2 + (maxWindSpeed - status.maxWindSpeed) * 0.35))
+    );
+    const dynamicBaseRadii = calculateDynamicBaseRadii(maxWindSpeed, nextRadiusMaxWind);
+
     const windCircles = calculateAsymmetricRadii({
-      baseRadii: this.baseRadii,
+      baseRadii: dynamicBaseRadii,
       movingSpeed: newSpeed,
       movingDirection: finalDir,
       asymmetryFactor: 0.2,
@@ -86,6 +91,7 @@ export class TyphoonEngine {
     const isFinished = lifeStage === 'dissipated' && this.config.autoStopOnDissipated;
 
     const effectiveMaxWindSpeed = Math.round((maxWindSpeed + newSpeed * 0.3) * 10) / 10;
+    const maxSpeedReached = Math.max(status.maxSpeedReached, maxWindSpeed);
 
     const next: TyphoonStatus = {
       ...status,
@@ -95,9 +101,11 @@ export class TyphoonEngine {
       pressure,
       maxWindSpeed,
       effectiveMaxWindSpeed,
+      maxSpeedReached,
       windCircles: scaledCircles,
       movingSpeed: newSpeed,
       movingDirection: finalDir,
+      radiusMaxWind: nextRadiusMaxWind,
       isOverLand: land,
       lifeStage,
       isFinished,

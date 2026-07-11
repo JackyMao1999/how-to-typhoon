@@ -65,6 +65,7 @@ export interface TyphoonStatus {
   isOverLand: boolean;
   lifeStage: LifeStage;
   isFinished: boolean;
+  maxSpeedReached: number;
 }
 
 export interface WindGridPoint {

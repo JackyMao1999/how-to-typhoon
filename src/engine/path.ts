@@ -9,6 +9,18 @@ function radToDeg(rad: number): number {
   return (rad * 180) / Math.PI;
 }
 
+function bearingVector(direction: number, speed: number): { east: number; north: number } {
+  const rad = degToRad(direction);
+  return {
+    east: speed * Math.sin(rad),
+    north: speed * Math.cos(rad),
+  };
+}
+
+function vectorBearing(east: number, north: number): number {
+  return (radToDeg(Math.atan2(east, north)) + 360) % 360;
+}
+
 export function smoothPath(
   points: [number, number][],
   options: PathSmoothOptions
@@ -85,24 +97,25 @@ export function applySteeringFlow(
     steeringDir = 315 + t * 35;
     steeringSpeed = baseSpeed * (1.1 + t * 0.3);
   } else {
-    steeringDir = 350;
+    steeringDir = 45;
     steeringSpeed = baseSpeed * 1.5;
   }
 
   const betaSpeed = 2;
-  const steeringRad = degToRad(steeringDir);
-  const betaRad = degToRad(0);
+  const steering = bearingVector(steeringDir, steeringSpeed);
+  const beta = bearingVector(0, betaSpeed);
 
-  const vx = steeringSpeed * Math.cos(steeringRad) + betaSpeed * Math.cos(betaRad);
-  const vy = steeringSpeed * Math.sin(steeringRad) + betaSpeed * Math.sin(betaRad);
+  const vx = steering.east + beta.east;
+  const vy = steering.north + beta.north;
 
   const { subtropicalHighDirection, subtropicalHighStrength } = config;
-  const highRad = degToRad(subtropicalHighDirection);
-  const finalVx = vx + subtropicalHighStrength * Math.cos(highRad);
-  const finalVy = vy + subtropicalHighStrength * Math.sin(highRad);
+  const highStrength = absLat >= 35 ? 0 : subtropicalHighStrength;
+  const high = bearingVector(subtropicalHighDirection, highStrength);
+  const finalVx = vx + high.east;
+  const finalVy = vy + high.north;
 
   const newSpeed = Math.sqrt(finalVx * finalVx + finalVy * finalVy);
-  const newDirection = (radToDeg(Math.atan2(finalVy, finalVx)) + 360) % 360;
+  const newDirection = vectorBearing(finalVx, finalVy);
 
   return { direction: newDirection, speed: Math.round(newSpeed * 10) / 10 };
 }
@@ -144,9 +157,6 @@ export function predictPath(
   let tempLng = status.centerLng;
   let tempLat = status.centerLat;
   let tempSpeed = status.movingSpeed;
-  let tempDir = status.movingDirection;
-  let tempOverLand = status.isOverLand;
-
   for (let i = 0; i < steps; i++) {
     const { direction: newDir, speed: newSpeed } = applySteeringFlow(tempLat, tempSpeed, config);
     const finalDir = applyCoriolisDeflection(newDir, newSpeed, tempLat, config);
@@ -154,7 +164,6 @@ export function predictPath(
     tempLng = nextLng;
     tempLat = nextLat;
     tempSpeed = newSpeed;
-    tempDir = finalDir;
     points.push([tempLng, tempLat]);
   }
   return points;

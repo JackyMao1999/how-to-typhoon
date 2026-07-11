@@ -1,12 +1,24 @@
 import { TyphoonStatus, WindLevel } from '../types/typhoon';
 import { haversineDistance, bearing } from '../utils/geo';
-import { degToRad, radToDeg } from '../utils/geo';
 
-const EYE_WALL_RATIO = 0.15;
+type Quadrant = 'ne' | 'nw' | 'se' | 'sw';
 
 export interface WindVector {
   speed: number;
   direction: number;
+}
+
+function quadrantForBearing(brg: number): Quadrant {
+  if (brg >= 0 && brg < 90) return 'ne';
+  if (brg >= 90 && brg < 180) return 'se';
+  if (brg >= 180 && brg < 270) return 'sw';
+  return 'nw';
+}
+
+function radiusAtBearing(typhoon: TyphoonStatus, brg: number): number {
+  const outer = typhoon.windCircles.find((wc) => wc.level === WindLevel.LV7) ?? typhoon.windCircles[0];
+  if (!outer) return 0;
+  return outer[quadrantForBearing(brg)];
 }
 
 /**
@@ -24,13 +36,12 @@ export function computeWindAtPoint(
   typhoon: TyphoonStatus,
 ): WindVector {
   const d = haversineDistance(typhoon.centerLng, typhoon.centerLat, lng, lat);
-  const maxRadius = Math.max(
-    ...typhoon.windCircles.map((wc) => Math.max(wc.ne, wc.nw, wc.se, wc.sw)),
-  );
+  const brg = bearing(typhoon.centerLng, typhoon.centerLat, lng, lat);
+  const maxRadius = radiusAtBearing(typhoon, brg);
 
   if (d > maxRadius || d < 0.5) return { speed: 0, direction: 0 };
 
-  const eyeWallRadius = maxRadius * EYE_WALL_RATIO;
+  const eyeWallRadius = Math.max(8, Math.min(typhoon.radiusMaxWind, maxRadius * 0.35));
   const maxWind = typhoon.maxWindSpeed;
 
   let speed: number;
@@ -42,10 +53,13 @@ export function computeWindAtPoint(
     speed = Math.max(0, speed);
   }
 
-  const brg = bearing(typhoon.centerLng, typhoon.centerLat, lng, lat);
-  const tangential = (brg + 90) % 360;
+  const tangential = typhoon.centerLat >= 0
+    ? (brg - 90 + 360) % 360
+    : (brg + 90) % 360;
   const inflow = 30;
-  const direction = (tangential + inflow) % 360;
+  const direction = typhoon.centerLat >= 0
+    ? (tangential + inflow) % 360
+    : (tangential - inflow + 360) % 360;
 
   const angleDiff = ((typhoon.movingDirection - brg + 360) % 360);
   if (angleDiff < 180) {

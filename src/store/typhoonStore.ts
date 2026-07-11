@@ -59,6 +59,7 @@ function createInitialStatus(lng?: number, lat?: number): TyphoonStatus {
     isOverLand: false,
     lifeStage: 'forming',
     isFinished: false,
+    maxSpeedReached: Math.round(speed * 10) / 10,
   };
 }
 
@@ -159,7 +160,19 @@ export const useTyphoonStore = create<TyphoonStore>((set, get) => {
 
       const { next, trackPoint, isOver } = engine.step(current);
       const newHistory = trackPoint ? [...history, trackPoint] : history;
-      const newFull = [...fullHistory, next];
+      let newFull = [...fullHistory, next];
+
+      // 内存保护: 最多保留 200 条，多余部分降采样为 6 小时间隔
+      if (newFull.length > 200) {
+        const keep = 168;
+        const cutoff = newFull.length - keep;
+        const old = newFull.slice(0, cutoff);
+        const down: TyphoonStatus[] = [];
+        for (let i = 0; i < old.length; i += 6) {
+          down.push(old[i]);
+        }
+        newFull = [...down, ...newFull.slice(cutoff)];
+      }
 
       set({
         current: next,
@@ -173,28 +186,21 @@ export const useTyphoonStore = create<TyphoonStore>((set, get) => {
     },
 
     start: () => {
-      const { simulation, isFinished } = get();
+      const { isFinished } = get();
       if (isFinished) return;
-      if (simulation) simulation.start();
       set({ isRunning: true, replayIndex: -1, replayPlaying: false });
     },
 
     pause: () => {
-      const { simulation } = get();
-      if (simulation) simulation.pause();
       set({ isRunning: false });
     },
 
     setSpeed: (speed: number) => {
-      const { simulation } = get();
-      if (simulation) simulation.setSpeed(speed);
       set({ speed });
     },
 
     reset: () => {
-      const { simulation } = get();
       const initial = createInitialStatus();
-      if (simulation) simulation.reset(initial);
       set({
         current: initial, fullHistory: [initial], history: [],
         isRunning: false, isFinished: false, speed: 1,

@@ -4,6 +4,7 @@ import { EngineConfig } from '../types/engine';
 const SST_THRESHOLD = 26.5;
 const LAND_FRICTION_FACTOR = 0.12;
 const INTENSIFY_RATE = 0.04;
+const DISSIPATED_WIND_SPEED = 10.8;
 
 /** 强度演化：forming/developing 阶段逐步提升风速 */
 export function applyIntensityEvolution(
@@ -34,18 +35,23 @@ export function determineLifeStage(
   status: TyphoonStatus,
   config: EngineConfig
 ): LifeStage {
-  const { maxWindSpeed, pressure, isOverLand, centerLat } = status;
+  const { maxWindSpeed, pressure, isOverLand, centerLat, maxSpeedReached } = status;
   const { seaSurfaceTemp, landTemperature, maxLatitude, minLatitude } = config;
 
   const absLat = Math.abs(centerLat);
 
   if (maxWindSpeed <= 0) return 'dissipated';
+  if (maxWindSpeed < DISSIPATED_WIND_SPEED && maxSpeedReached >= 17.2) return 'dissipated';
+  if (maxWindSpeed < 13.9 && pressure >= 1010) return 'dissipated';
 
-  if (absLat < minLatitude) return 'decaying';
-  if (absLat > maxLatitude) return 'decaying';
+  if (absLat < minLatitude) return maxWindSpeed < 13.9 ? 'dissipated' : 'decaying';
+  if (absLat > maxLatitude) return maxWindSpeed < 13.9 ? 'dissipated' : 'decaying';
 
   if (isOverLand) return 'decaying';
-  if (maxWindSpeed < 17.2) return absLat < 15 ? 'forming' : 'dissipated';
+  if (maxWindSpeed < 17.2) {
+    if (maxSpeedReached >= 17.2) return 'decaying';
+    return 'forming';
+  }
   if (maxWindSpeed < 32.7) return 'developing';
   if (pressure < 970) return 'mature';
 

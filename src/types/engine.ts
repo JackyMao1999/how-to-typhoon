@@ -43,7 +43,7 @@ export const DEFAULT_PATH_SMOOTH_OPTIONS: PathSmoothOptions = {
 };
 
 export interface AsymmetricWindCircleParams {
-  baseRadii: Record<WindLevel, number>;
+  baseRadii: Partial<Record<WindLevel, number>>;
   movingSpeed: number;
   movingDirection: number;
   asymmetryFactor: number;
@@ -56,10 +56,10 @@ export const DEFAULT_BASE_RADII: Record<WindLevel, number> = {
 };
 
 export const SEASON_OFFSET: Record<Season, { sea: number; land: number }> = {
-  spring: { sea: 0, land: 0 },
+  spring: { sea: 0.5, land: 1 },
   summer: { sea: 2, land: 3 },
-  autumn: { sea: 1, land: 1 },
-  winter: { sea: -3, land: -2 },
+  autumn: { sea: 0.5, land: 0 },
+  winter: { sea: -2.5, land: -3 },
 };
 
 export const SEASON_LABELS: Record<Season, string> = {
