@@ -71,7 +71,7 @@ export class TyphoonEngine {
       baseRadii,
       movingSpeed: newSpeed,
       movingDirection: finalDir,
-      asymmetryFactor: 0.2,
+      asymmetryFactor: 0.35,
     });
 
     const scaledCircles: WindCircleRadii[] = windCircles.map((wc) => ({

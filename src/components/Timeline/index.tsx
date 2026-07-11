@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { useTyphoonStore } from '../../store/typhoonStore';
+import { useMap } from '../../map/MapProvider';
 
 export function Timeline() {
   const isRunning = useTyphoonStore((s) => s.isRunning);
@@ -30,6 +31,15 @@ export function Timeline() {
     }
     return () => { if (replayTimerRef.current) clearInterval(replayTimerRef.current); };
   }, [replayPlaying, hasHistory, speed, nextReplayStep]);
+
+  const { flyTo } = useMap();
+  useEffect(() => {
+    if (!hasHistory || replayIndex < 0) return;
+    const entry = fullHistory[replayIndex];
+    if (entry) {
+      flyTo(entry.centerLng, entry.centerLat, 5);
+    }
+  }, [replayIndex, hasHistory, fullHistory, flyTo]);
 
   const handlePlayClick = () => {
     if (hasHistory) toggleReplay();

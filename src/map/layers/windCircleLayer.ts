@@ -24,18 +24,18 @@ const STROKE_WEIGHT: Record<WindLevel, number> = {
 
 export function updateWindCircleLayers(map: any, status: TyphoonStatus): void {
   currentMap = map;
+
+  for (const [, group] of layers) {
+    map.removeLayer(group.fill);
+    map.removeLayer(group.outline);
+  }
+  layers.clear();
+
   const levels = [WindLevel.LV7, WindLevel.LV10, WindLevel.LV12];
 
   for (const level of levels) {
     const radii = status.windCircles.find((wc) => wc.level === level);
-    if (!radii) {
-      const existing = layers.get(level);
-      if (existing) {
-        map.removeLayer(existing.fill);
-        map.removeLayer(existing.outline);
-      }
-      continue;
-    }
+    if (!radii) continue;
 
     const wgsPoints = generateWindCirclePolygon(
       status.centerLng,
@@ -47,14 +47,6 @@ export function updateWindCircleLayers(map: any, status: TyphoonStatus): void {
     const color = WIND_LEVEL_COLORS[level];
     const opacity = OPACITY[level];
     const weight = STROKE_WEIGHT[level];
-
-    const existing = layers.get(level);
-
-    if (existing) {
-      existing.fill.setLatLngs(latlngs);
-      existing.outline.setLatLngs(latlngs);
-      continue;
-    }
 
     const fill = L.polygon(latlngs, {
       color: 'transparent',
@@ -79,8 +71,8 @@ export function setWindCirclesVisible(visible: boolean): void {
   if (!currentMap) return;
   for (const [, group] of layers) {
     if (visible) {
-      group.fill.addTo(currentMap);
-      group.outline.addTo(currentMap);
+      if (!currentMap.hasLayer(group.fill)) group.fill.addTo(currentMap);
+      if (!currentMap.hasLayer(group.outline)) group.outline.addTo(currentMap);
     } else {
       currentMap.removeLayer(group.fill);
       currentMap.removeLayer(group.outline);

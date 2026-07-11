@@ -18,8 +18,8 @@ export const WIND_LEVEL_NAMES: Record<WindLevel, string> = {
 
 export const WIND_LEVEL_SPEED_RANGES: Record<WindLevel, [number, number]> = {
   [WindLevel.LV7]: [13.9, 17.1],
-  [WindLevel.LV10]: [24.5, 28.4],
-  [WindLevel.LV12]: [32.7, 36.9],
+  [WindLevel.LV10]: [17.2, 24.5],
+  [WindLevel.LV12]: [24.5, 32.7],
 };
 
 export interface WindCircleRadii {

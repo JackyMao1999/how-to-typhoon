@@ -66,7 +66,7 @@ export function generateWindCirclePolygon(
   centerLng: number,
   centerLat: number,
   radii: { ne: number; nw: number; se: number; sw: number },
-  segments: number = 64
+  segments: number = 96
 ): [number, number][] {
   const points: [number, number][] = [];
   for (let i = 0; i < segments; i++) {

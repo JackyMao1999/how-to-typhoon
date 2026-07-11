@@ -43,6 +43,7 @@ function MapLayers() {
   const showPath = useUIStore((s) => s.showPath);
   const showPrediction = useUIStore((s) => s.showPrediction);
   const showCoastline = useUIStore((s) => s.showCoastline);
+  const replayIndex = useTyphoonStore((s) => s.replayIndex);
   const [hoveredNode, setHoveredNode] = useState<{ x: number; y: number; text: string; color: string; time: string } | null>(null);
   const monitoredRegions = useUIStore((s) => s.monitoredRegions);
 
@@ -51,7 +52,7 @@ function MapLayers() {
   useEffect(() => {
     if (!map || !isLoaded) return;
     updateWindCircleLayers(map, displayState);
-  }, [map, isLoaded, displayState]);
+  }, [map, isLoaded, displayState, replayIndex]);
 
   useEffect(() => {
     if (!map || !isLoaded || fullHistory.length < 2) return;

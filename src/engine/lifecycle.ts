@@ -28,7 +28,7 @@ export function applyIntensityEvolution(
     const humidityFactor = clamp((midLevelHumidity - 45) / 35, 0, 1.2);
     const heatBonus = oceanHeatContent * 10;
     const humidityBonus = (humidityFactor - 0.7) * 8;
-    const normalPotential = 15 + Math.max(0, seaSurfaceTemp - 26) * 3 + Math.max(0, 30 - absLat) * 0.25 + heatBonus + humidityBonus - shearPenalty;
+    const normalPotential = 20 + Math.max(0, seaSurfaceTemp - 26) * 3 + Math.max(0, 30 - absLat) * 0.25 + heatBonus + humidityBonus - shearPenalty;
     const extremePotential = clamp(
       68 + Math.max(0, seaSurfaceTemp - 28) * 5 + Math.max(0, 22 - absLat) * 0.6 + oceanHeatContent * 8 + humidityBonus - shearPenalty * 0.7,
       62,

@@ -1,39 +1,20 @@
 import React, { useEffect, useRef } from 'react';
 import { useMap } from '../map/MapProvider';
-import { useTyphoonStore, useDisplayState } from '../store/typhoonStore';
-import { useUIStore } from '../store/uiStore';
-import { ParticleSystem } from './ParticleSystem';
+import { useDisplayState } from '../store/typhoonStore';
 import { EyeEffect } from './EyeEffect';
-import { WindCircleGlow } from './WindCircleGlow';
-import { WindField } from './WindField';
-import { CloudBand } from './CloudBand';
 import L from 'leaflet';
-import { getEyeSpeedMul, getGlowSpeedMul, getTyphoonLevel } from '../engine';
+import { getEyeSpeedMul, getTyphoonLevel } from '../engine';
 import { TYPHOON_LEVEL_CONFIG, TyphoonLevel } from '../types/typhoon';
 
 export function RendererOverlay() {
   const webglRef = useRef<HTMLCanvasElement>(null);
   const { map, isLoaded } = useMap();
   const displayState = useDisplayState();
-  const showParticles = useUIStore((s) => s.showParticles);
-  const showCloudBands = useUIStore((s) => s.showCloudBands);
-  const showWindField = useUIStore((s) => s.showWindField);
 
-  const particleRef = useRef<ParticleSystem | null>(null);
   const eyeRef = useRef<EyeEffect | null>(null);
-  const glowRef = useRef<WindCircleGlow | null>(null);
-  const windFieldRef = useRef<WindField | null>(null);
-  const cloudRef = useRef<CloudBand | null>(null);
 
   const stateRef = useRef(displayState);
-  const particlesVisibleRef = useRef(showParticles);
-  const cloudVisibleRef = useRef(showCloudBands);
-  const windFieldVisibleRef = useRef(showWindField);
-
   stateRef.current = displayState;
-  particlesVisibleRef.current = showParticles;
-  cloudVisibleRef.current = showCloudBands;
-  windFieldVisibleRef.current = showWindField;
 
   useEffect(() => {
     if (!isLoaded || !map || !webglRef.current) return;
@@ -45,22 +26,8 @@ export function RendererOverlay() {
     gl.clearColor(0, 0, 0, 0);
     gl.enable(gl.BLEND);
 
-    const particles = new ParticleSystem(gl);
-    particles.init();
-    particleRef.current = particles;
-
     const eye = new EyeEffect(gl);
     eyeRef.current = eye;
-
-    const cloud = new CloudBand(gl);
-    cloudRef.current = cloud;
-
-    const glow = new WindCircleGlow(gl);
-    glowRef.current = glow;
-
-    const windField = new WindField(gl);
-    windField.init();
-    windFieldRef.current = windField;
 
     let animId = 0;
     let lastTime = performance.now();
@@ -101,7 +68,6 @@ export function RendererOverlay() {
         const pixel = map.latLngToContainerPoint(L.latLng(s.centerLat, s.centerLng));
         if (!pixel || isNaN(pixel.x) || isNaN(pixel.y)) return;
 
-        // 台风在屏幕外超出一定距离则跳过渲染（防止日界线附近坐标异常）
         const onScreen = pixel.x >= -100 && pixel.x <= pw + 100 && pixel.y >= -100 && pixel.y <= ph + 100;
 
         const offsetNDC: [number, number] = [
@@ -113,36 +79,11 @@ export function RendererOverlay() {
         const level = getTyphoonLevel(speed);
         const particleColor = TYPHOON_LEVEL_CONFIG[level].color;
         const eyeSpeedMul = getEyeSpeedMul(speed);
-        const glowSpeedMul = getGlowSpeedMul(speed);
         const eyeColor = level === TyphoonLevel.SuperTY ? [1.0, 1.0, 1.0] as [number, number, number] : particleColor;
 
-        // 中心调试标记（红点），确认 WebGL 渲染始终在工作
-        particles.draw([0, 0], 0.003, [pw, ph], 0.8, zoomScale, [0.8, 0.1, 0.1]);
-
         if (onScreen) {
-          const windRadii = s.windCircles.map((wc) => Math.max(wc.ne, wc.nw, wc.se, wc.sw)) as [number, number, number];
-          const cloudRadius = Math.max(120, ...windRadii.filter((r) => Number.isFinite(r)));
-
-          if (cloudVisibleRef.current) {
-            cloud.update(delta);
-            cloud.draw(offsetNDC, ndcScale, speed, cloudRadius);
-          }
-
-          if (particlesVisibleRef.current) {
-            particles.update(now);
-            particles.draw(offsetNDC, ndcScale, [pw, ph], 0.8, zoomScale, particleColor);
-          }
-
           eye.update(delta);
           eye.draw(offsetNDC, ndcScale, eyeSpeedMul, eyeColor);
-
-          glow.update(delta);
-          glow.draw(offsetNDC, ndcScale, windRadii, glowSpeedMul);
-
-          if (windFieldVisibleRef.current) {
-            windField.update(now, s.centerLng, s.centerLat, s, map, delta);
-            windField.draw(offsetNDC, ndcScale, [pw, ph], 0.8, zoomScale);
-          }
         }
       } catch (_) { /* 保证 rAF 循环不中断 */ }
     }
@@ -151,11 +92,7 @@ export function RendererOverlay() {
 
     return () => {
       cancelAnimationFrame(animId);
-      particleRef.current?.dispose();
       eyeRef.current?.dispose();
-      glowRef.current?.dispose();
-      windFieldRef.current?.dispose();
-      cloudRef.current?.dispose();
     };
   }, [isLoaded, map]);
 

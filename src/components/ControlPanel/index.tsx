@@ -56,9 +56,6 @@ type AutoKey = 'seaSurfaceTemp' | 'landTemperature' | 'frictionCoefficient' | 's
 const SEASONS = ['spring', 'summer', 'autumn', 'winter'] as const;
 
 const TOGGLE_IDS: Record<string, string> = {
-  '粒子系统': 'ctrl-toggle-particles',
-  '云图': 'ctrl-toggle-clouds',
-  '风场': 'ctrl-toggle-windfield',
   '风圈': 'ctrl-toggle-windcircle',
   '路径预测': 'ctrl-toggle-prediction',
   '历史路径': 'ctrl-toggle-path',
@@ -73,19 +70,13 @@ export function ControlPanel() {
   const season = useTyphoonStore((s) => s.season);
   const setSeason = useTyphoonStore((s) => s.setSeason);
 
-  const showParticles = useUIStore((s) => s.showParticles);
-  const showCloudBands = useUIStore((s) => s.showCloudBands);
   const showWindCircles = useUIStore((s) => s.showWindCircles);
-  const showWindField = useUIStore((s) => s.showWindField);
   const showPath = useUIStore((s) => s.showPath);
   const showPrediction = useUIStore((s) => s.showPrediction);
   const showCoastline = useUIStore((s) => s.showCoastline);
-  const toggleParticles = useUIStore((s) => s.toggleParticles);
-  const toggleCloudBands = useUIStore((s) => s.toggleCloudBands);
   const toggleWindCircles = useUIStore((s) => s.toggleWindCircles);
   const toggleRegionMonitor = useUIStore((s) => s.toggleRegionMonitor);
-  const isRegionMonitored = useUIStore((s) => s.isRegionMonitored);
-  const toggleWindField = useUIStore((s) => s.toggleWindField);
+  const monitoredRegions = useUIStore((s) => s.monitoredRegions);
   const togglePath = useUIStore((s) => s.togglePath);
   const togglePrediction = useUIStore((s) => s.togglePrediction);
   const toggleCoastline = useUIStore((s) => s.toggleCoastline);
@@ -178,7 +169,7 @@ export function ControlPanel() {
                 <label key={r.id} className="flex items-center gap-2 cursor-pointer rounded-lg border border-gray-700/30 bg-dark-bg/30 px-2 py-1.5 text-[10px] text-gray-300 transition-colors hover:border-cyan-300/30">
                   <input
                     type="checkbox"
-                    checked={isRegionMonitored(r.id)}
+                    checked={monitoredRegions.includes(r.id)}
                     onChange={() => toggleRegionMonitor(r.id)}
                     className="w-3 h-3 accent-typhoon-lv7 rounded"
                   />
@@ -203,9 +194,6 @@ export function ControlPanel() {
           <div className="pt-3 border-t border-gray-700/30">
             <h3 className="panel-title mb-2 font-sans">Layers</h3>
             <div className="grid grid-cols-2 gap-2">
-              <Toggle id={TOGGLE_IDS['粒子系统']} label="粒子系统" checked={showParticles} onChange={toggleParticles} />
-              <Toggle id={TOGGLE_IDS['云图']} label="云图" checked={showCloudBands} onChange={toggleCloudBands} />
-              <Toggle id={TOGGLE_IDS['风场']} label="风场" checked={showWindField} onChange={toggleWindField} />
               <Toggle id={TOGGLE_IDS['风圈']} label="风圈" checked={showWindCircles} onChange={toggleWindCircles} />
               <Toggle id={TOGGLE_IDS['路径预测']} label="路径预测" checked={showPrediction} onChange={togglePrediction} />
               <Toggle id={TOGGLE_IDS['历史路径']} label="历史路径" checked={showPath} onChange={togglePath} />
@@ -222,7 +210,7 @@ function InfoIcon({ info }: { info: { title: string; desc: string; effect: strin
   return (
     <span className="group relative inline-flex items-center justify-center w-4 h-4 rounded-full border border-gray-500 text-gray-400 text-[10px] cursor-help ml-1 hover:border-typhoon-lv7 hover:text-typhoon-lv7 transition-colors leading-none shrink-0">
       !
-      <div className="absolute top-full right-0 md:left-1/2 md:right-auto md:-translate-x-1/2 mt-2 w-56 p-2.5 bg-dark-bg border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-[805]">
+      <div className="absolute top-full right-0 md:left-1/2 md:right-auto md:-translate-x-1/2 mt-2 w-72 p-3 bg-dark-bg border border-gray-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none z-[805]">
         <div className="text-typhoon-lv7 text-xs font-bold mb-1">{info.title}</div>
         <div className="text-gray-300 text-[10px] leading-relaxed mb-1">{info.desc}</div>
         <div className="text-gray-500 text-[9px] italic">{info.effect}</div>
