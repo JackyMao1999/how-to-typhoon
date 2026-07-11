@@ -14,6 +14,8 @@ import { historicalToStatuses, statusesToTrackPoints } from '../data/historical/
 import { PREDEFINED_REGIONS } from '../data/regions';
 import { distanceToRegion, getAlertLevel } from '../types/region';
 import { useUIStore } from './uiStore';
+import { RealWeatherData } from '../data/weather/types';
+import { fetchWeatherAt } from '../data/weather/client';
 
 type AutoKey = 'seaSurfaceTemp' | 'landTemperature' | 'frictionCoefficient' | 'subtropicalHighStrength' | 'subtropicalHighDirection' | 'verticalWindShear' | 'oceanHeatContent' | 'midLevelHumidity' | 'stormSize';
 
@@ -129,6 +131,11 @@ interface TyphoonStore {
   loadSession: (index: number) => void;
   loadHistoricalTyphoon: (id: string) => void;
   importHistoricalTyphoon: (data: HistoricalTyphoon) => void;
+  realWeatherMode: boolean;
+  weatherData: RealWeatherData | null;
+  weatherErrorMessage: string;
+  toggleRealWeather: () => void;
+  fetchAndApplyWeather: (lng: number, lat: number) => void;
   setSeason: (season: SeasonKey) => void;
 }
 
@@ -164,6 +171,9 @@ export const useTyphoonStore = create<TyphoonStore>((set, get) => {
     season: 'summer',
     typhoonSessions: [],
     historicalTyphoons: BUILTIN_HISTORICAL_TYPHOONS,
+    realWeatherMode: false,
+    weatherData: null,
+    weatherErrorMessage: '',
 
     init: () => {
       const initial = createInitialStatus(undefined, undefined, get().engineConfig);
@@ -172,7 +182,7 @@ export const useTyphoonStore = create<TyphoonStore>((set, get) => {
     },
 
     tick: () => {
-      const { engine, current, fullHistory, history, isFinished, autoOverrides, season } = get();
+      const { engine, current, fullHistory, history, isFinished, autoOverrides, season, realWeatherMode, weatherData } = get();
       if (isFinished) return;
 
       const { centerLat, isOverLand } = current;
@@ -185,12 +195,33 @@ export const useTyphoonStore = create<TyphoonStore>((set, get) => {
       if (autoOverrides.oceanHeatContent) updates.oceanHeatContent = computeOceanHeatContent(updates.seaSurfaceTemp ?? get().engineConfig.seaSurfaceTemp, season);
       if (autoOverrides.midLevelHumidity) updates.midLevelHumidity = computeMidLevelHumidity(centerLat, season);
       if (autoOverrides.stormSize) updates.stormSize = computeStormSize(centerLat, current.maxWindSpeed);
+
+      // 真实天气模式：覆盖自动计算参数
+      if (realWeatherMode && weatherData) {
+        updates.seaSurfaceTemp = weatherData.seaSurfaceTemp;
+        updates.verticalWindShear = weatherData.verticalWindShear;
+        updates.midLevelHumidity = weatherData.midLevelHumidity;
+        updates.oceanHeatContent = weatherData.oceanHeatContent;
+        updates.landTemperature = weatherData.landTemperature;
+      }
+
       if (Object.keys(updates).length > 0) {
         engine.updateConfig(updates);
         set({ engineConfig: engine.getConfig() });
       }
 
       const { next, trackPoint, isOver } = engine.step(current);
+
+      // 真实天气：定时刷新
+      const wd = get().weatherData;
+      if (get().realWeatherMode) {
+        const lastFetch = wd?.fetchedAt ?? 0;
+        const moved = wd ? Math.abs(next.centerLng - wd.lng) > 1 || Math.abs(next.centerLat - wd.lat) > 1 : true;
+        const expired = Date.now() - lastFetch > 600000; // 10分钟
+        if (moved || expired) {
+          get().fetchAndApplyWeather(next.centerLng, next.centerLat);
+        }
+      }
 
       // 区域预警检测
       const ui = useUIStore.getState();
@@ -401,6 +432,32 @@ export const useTyphoonStore = create<TyphoonStore>((set, get) => {
         historicalTyphoons: [imported, ...state.historicalTyphoons.filter((item) => item.id !== imported.id)],
       }));
       get().loadHistoricalTyphoon(imported.id);
+    },
+
+    toggleRealWeather: () => {
+      const next = !get().realWeatherMode;
+      set({ realWeatherMode: next, weatherErrorMessage: '' });
+      if (next) {
+        const pos = get().current;
+        get().fetchAndApplyWeather(pos.centerLng, pos.centerLat);
+      }
+    },
+
+    fetchAndApplyWeather: async (lng: number, lat: number) => {
+      const result = await fetchWeatherAt(lng, lat);
+      if (result.success && result.data) {
+        const updates: Partial<EngineConfig> = {
+          seaSurfaceTemp: result.data.seaSurfaceTemp,
+          verticalWindShear: result.data.verticalWindShear,
+          midLevelHumidity: result.data.midLevelHumidity,
+          oceanHeatContent: result.data.oceanHeatContent,
+          landTemperature: result.data.landTemperature,
+        };
+        get().engine.updateConfig(updates);
+        set({ weatherData: result.data, engineConfig: get().engine.getConfig(), weatherErrorMessage: '' });
+      } else {
+        set({ weatherErrorMessage: result.error || '获取天气数据失败，使用默认参数', weatherData: null });
+      }
     },
 
     setSeason: (season: SeasonKey) => {

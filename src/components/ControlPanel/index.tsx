@@ -75,6 +75,10 @@ export function ControlPanel() {
   const start = useTyphoonStore((s) => s.start);
   const autoSpawn = useTyphoonStore((s) => s.autoSpawn);
   const toggleAutoSpawn = useTyphoonStore((s) => s.toggleAutoSpawn);
+  const realWeatherMode = useTyphoonStore((s) => s.realWeatherMode);
+  const toggleRealWeather = useTyphoonStore((s) => s.toggleRealWeather);
+  const weatherData = useTyphoonStore((s) => s.weatherData);
+  const weatherErrorMessage = useTyphoonStore((s) => s.weatherErrorMessage);
 
   const showWindCircles = useUIStore((s) => s.showWindCircles);
   const showPath = useUIStore((s) => s.showPath);
@@ -132,6 +136,30 @@ export function ControlPanel() {
                   onToggleAuto={() => toggleAutoOverride(autoKey)} />
               ))}
             </div>
+          </div>
+
+          <div className="pt-3 border-t border-gray-700/30">
+            <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors ${
+              realWeatherMode ? 'border-cyan-400/40 bg-cyan-950/25' : 'border-gray-700/30 bg-dark-bg/30 hover:border-cyan-300/30'
+            }`}>
+              <input
+                id="ctrl-real-weather"
+                type="checkbox"
+                checked={realWeatherMode}
+                onChange={toggleRealWeather}
+                className="mt-1 h-4 w-4 accent-typhoon-lv7"
+              />
+              <span className="min-w-0">
+                <span className="block text-xs font-bold text-gray-200">🌤 真实天气模式</span>
+                <span className="mt-1 block text-[10px] leading-relaxed text-gray-500">
+                  {realWeatherMode
+                    ? weatherData
+                      ? `SST ${weatherData.seaSurfaceTemp}°C · 风切变 ${weatherData.verticalWindShear} m/s · 湿度 ${weatherData.midLevelHumidity}%`
+                      : weatherErrorMessage || '正在获取天气数据...'
+                    : '从 Open-Meteo 获取当前位置实时气象数据'}
+                </span>
+              </span>
+            </label>
           </div>
 
           <div className="pt-3 border-t border-gray-700/30">
