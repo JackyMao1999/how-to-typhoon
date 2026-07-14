@@ -1,7 +1,9 @@
 # 🌀 Typhoon Simulation & Warning System
 
 An interactive typhoon simulation and early warning visualization system built with React, TypeScript, and Leaflet.
+| 需要居中的文本 |
 
+English|[中文](README.zh.md)
 ## Features
 
 ### 🌪️ Typhoon Simulation
